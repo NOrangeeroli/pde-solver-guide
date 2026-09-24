@@ -1,12 +1,12 @@
 'use strict';
 const SOURCE='https://github.com/NOrangeeroli/meta-pde-solver/blob/7b302f507d3ef6707be63ff099b91376a6573adb/';
-const chapters=[['overview','全局图景'],['hierarchy','五层组件拆分'],['simple-solver','算例：拆开一个 solver'],['equations','跨方程共享结构'],['dsl','DSL 与类型契约'],['supernet','L1 / L2 Supernet'],['training','梯度与多网格训练'],['controllers','CFL、拒步与回退'],['budget','成本预算与剪枝'],['quickstart','从代码开始'],['sources','范围与实现来源']];
+const chapters=[['overview','全局图景'],['hierarchy','五层组件拆分'],['simple-solver','算例：拆开一个 solver'],['equations','跨方程共享结构'],['dsl','DSL 与类型契约'],['supernet','L1 / L2 Supernet'],['training','梯度与多网格训练'],['e2e-training','完整轨迹 E2E 训练'],['controllers','CFL、拒步与回退'],['budget','成本预算与剪枝'],['quickstart','从代码开始'],['sources','范围与实现来源']];
 const flow=(items)=>`<div class="flow">${items.map((x,i)=>`${i?'<span class="arrow" aria-hidden="true">→</span>':''}<div class="node ${['teal','blue','purple','amber'][i%4]}"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')}</div>`;
 const head=(n,k,t,p)=>`<p class="section-label">${n} / ${k}</p><h2>${t}</h2><p class="lead">${p}</p>`;
 const pages={overview:()=>head('01','OVERVIEW','搜索的是数值算法的组合。','把经典 solver 写成能逐层展开的计算图，在兼容的接口上放入候选模块，再通过数据选择结构和参数。')+`
 <div class="diagram"><div class="diagram-head"><p class="label">ONE PROGRAM · TWO DIRECTIONS</p><span class="chip">前向计算 / 反向学习</span></div>${flow([['拆分 solver','L0 → L1 → L2 → L3 → L4'],['定义 supernet','候选模块 + 共享 gate'],['在数据上训练','误差 + 稀疏化 + 成本'],['导出硬 solver','单选路径 + 独立验证']])}<div class="return-line">← 参考解与预算约束，把梯度传回选择权重 α 和内部参数 θ</div><p class="caption">图 01 · 分层规定如何表示；mixture 规定在哪里搜索；训练决定保留哪些组合。</p></div>
 <div class="grid2"><a class="card" href="#hierarchy"><span class="tag">01 / REPRESENTATION</span><h4>一个 WENO 步，能拆到多细？</h4><p>从时间步到数值模块、机制、模板和张量原语。逐层查看各层输入与输出。</p></a><a class="card" href="#supernet"><span class="tag">02 / SEARCH SPACE</span><h4>L1 与 L2，改变的是什么？</h4><p>L1 在完整重构方法间选择；L2 在 WENO 权重、MP5 限幅等内部机制间组合。</p></a><a class="card" href="#training"><span class="tag">03 / OPTIMIZATION</span><h4>模块与参数一起学</h4><p>共享 gate 和内部参数跨网格训练；controller 各自 rollout，然后组合损失。</p></a><a class="card" href="#budget"><span class="tag">04 / DEPLOYMENT</span><h4>混合表现 ≠ 剪枝表现</h4><p>导出单选路径后重新测量误差、拒步和成本，最后进入 HyperBench。</p></a></div>
-<h3>三个范围，需要分别理解</h3><div class="table-wrap"><table><thead><tr><th>对象</th><th>已实现的含义</th><th>不能据此推断</th></tr></thead><tbody><tr><td>五层组件 / DSL</td><td>宏可展开，候选可组合，L4 Torch 执行</td><td>任意组合都稳定或物理合法</td></tr><tr><td>18 个默认方程入口</td><td>每个方程有可训练的基础 FV 搜索空间</td><td>每个方程都覆盖全部经典 solver</td></tr><tr><td>Burgers 64 配置</td><td>冻结目录中 64 个固定步长数值路径有见证</td><td>原生自适应控制器全部等价</td></tr></tbody></table></div><div class="note">本指南按代码快照 <code>7b302f507</code> 编写。交互图用于解释结构和公式，不在浏览器里运行 PDE 训练，也不展示虚构的实验性能。</div>`};
+<h3>三个范围，需要分别理解</h3><div class="table-wrap"><table><thead><tr><th>对象</th><th>已实现的含义</th><th>不能据此推断</th></tr></thead><tbody><tr><td>五层组件 / DSL</td><td>宏可展开，候选可组合，L4 Torch 执行</td><td>任意组合都稳定或物理合法</td></tr><tr><td>18 个默认方程入口</td><td>每个方程有可训练的基础 FV 搜索空间</td><td>每个方程都覆盖全部经典 solver</td></tr><tr><td>Burgers 64 配置</td><td>冻结目录中 64 个固定步长数值路径有见证</td><td>原生自适应控制器全部等价</td></tr></tbody></table></div><div class="note">本指南的既有实现章节按代码快照 <code>7b302f507</code> 编写；<a href="#e2e-training">完整轨迹 E2E 训练</a> 是另列的设计方案。交互图用于解释结构和公式，不在浏览器里运行 PDE 训练，也不展示虚构的实验性能。</div>`};
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 const code=(title,s)=>`<div class="codebox"><div class="code-head"><span>${title}</span><button class="copy" aria-label="复制 ${title}">复制</button></div><pre><code>${esc(s)}</code></pre></div>`;
 const table=(headers,rows)=>`<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -94,7 +94,7 @@ pages.training=()=>head('07','TRAINING','一套参数，在多种分辨率上学
 <details><summary>稀疏化为什么不直接用 softmax 权重的 L1？</summary><p>归一化 softmax 权重之和恒为 1，直接做 L1 没有选择作用。数值 gate 使用 Hard-Concrete 活跃数量代理，并计入全关闭时的 dense fallback；预算训练另外对 controller 稀疏参数加惩罚。通用训练态可以采样 logistic noise，本预算训练路径使用确定性数值 gate。</p></details>
 <details><summary>解析数据如何覆盖复杂情况？</summary><p>数据源是预先冻结的连续初态清单及其 family、split、amplitude。解析熵解 oracle 在各网格直接生成单元平均，能处理其支持的激波切割单元。初态类型、幅度和最终时刻决定是否包含形成激波、传播、相互作用和长时间行为；短时间窗本身不等于覆盖复杂场景。</p><p>train / validation 通过 profile ID 与连续初态哈希隔离。相同函数禁止跨 split；相似函数的统计泄漏仍需由实验设计处理。默认短时间窗为 0.00390625、0.0078125、0.015625，不应替代长时验证。</p></details>
 <div class="note">流式反传与整体损失的梯度在工程测试中对齐。默认每条训练 rollout 最多 256 次尝试；超过上限会失败，不静默截短。分辨率迁移使用 validation profiles 的更细网格，不是独立 test profiles 的泛化测试。</div>`;
-pages.controllers=()=>head('08','TIME CONTROL','数值内核之外，还要定义如何推进。','同一个空间离散与 RK 方法，采用不同 CFL、波速估计和拒步策略，会得到不同的误差与成本。控制策略因此也需要进入搜索与导出。')+`
+pages.controllers=()=>head('09','TIME CONTROL','数值内核之外，还要定义如何推进。','同一个空间离散与 RK 方法，采用不同 CFL、波速估计和拒步策略，会得到不同的误差与成本。控制策略因此也需要进入搜索与导出。')+`
 <div class="diagram"><div class="diagram-head"><p class="label">TRANSACTIONAL TIME STEP</p><span class="chip">接受才提交状态与时间</span></div>${flow([['估计速度 a','cell / face / Roe'],['提出 Δt','CFL · Δx/a；截到输出时刻'],['尝试数值步','得到候选状态与阶段诊断'],['检查并接受','finite / stage CFL']])}<div class="return-line">检查失败 → 丢弃候选 → PC 回退或减小 Δt → 从旧状态重试</div><p class="caption">图 09 · rollback 保留旧状态与旧时间。所有尝试、拒步、回退与检查都应计入部署成本。</p></div>
 <h3>默认搜索的四条完整策略</h3>${table(['controller','步长 / 检查','失败处理'],[['fixed_1_32','固定 Δt/Δx = 1/32；输出处截断','不重试，失败显式退出'],['cell_cfl','cell speed；CFL 初值 0.2；finite guard','减半重试'],['face_cfl','重构 face speed；CFL 初值 0.35；阶段上限 0.4','减半重试'],['cell_pc_retry','cell speed；CFL 初值 0.2；finite guard','先以 PC 重构重做完整步，再减半']])}
 <div class="equation">CFL = c<sub>min</sub> + (c<sub>max</sub> − c<sub>min</sub>) · sigmoid(raw)<br>默认有界范围：[0.01, 0.45]</div>
@@ -102,7 +102,7 @@ pages.controllers=()=>head('08','TIME CONTROL','数值内核之外，还要定�
 <details open><summary>硬导出时，控制器要与算法族兼容</summary><p>先确定数值 family，再从兼容 controller 中选择最高权重者。face / PC fallback 对硬模型要求 FV；fixed / cell 策略通用。导出记录被排除的 incompatible probability mass，不用另一个算法静默替代。</p></details>
 <details><summary>与原生 HyperBench 的对齐范围</summary><p>hard Classic 另有 previous-CFL 控制，包含初始 Δt=0.1、target=0.4、max=0.45 与拒步缩放；其原生一致性测试独立存在，但它不在 unrestricted mixed-family 的默认 controller 候选中。</p><p>选定 hard FV 配置的 face-CFL、阶段检查与回滚通过原生对齐测试。软 family mixture 的阶段检查只观察 FV stages；Sharp / DG 完整原生控制、MP5 的局部 invalid-trace fallback 不在这项等价声明内。</p></details>
 <p class="small">时间步算术可降到 L4；<code>control_plan</code> 暴露循环、检查与回滚的层级结构。目前外层动态控制由有界 Python runtime 执行，不能把它称为任意控制流 DSL 的通用解释器。</p>`;
-pages.budget=()=>head('09','BUDGET & EXPORT','优化软模型，用硬模型决定是否合格。','训练时许多 expert 同时计算；部署时只保留单选路径。预算目标估计部署工作量，不把训练期的全部计算当成最终 solver 的成本。')+`
+pages.budget=()=>head('10','BUDGET & EXPORT','优化软模型，用硬模型决定是否合格。','训练时许多 expert 同时计算；部署时只保留单选路径。预算目标估计部署工作量，不把训练期的全部计算当成最终 solver 的成本。')+`
 <div class="diagram">${flow([['软 supernet','全部候选前向 + 可微期望成本'],['独立预算训练','误差 + λ(C/B − 1) + 稀疏项'],['硬剪枝','argmax + compatible controller'],['重新运行','实际尝试计数 + 误差 + 预算']])}<p class="caption">图 10 · λ 通过投影对偶上升更新，始终非负；每个预算 B 分别训练一套模型。</p></div>
 <div class="equation">min<sub>θ,α</sub> ℒ<sub>err</sub> + λ(C/B − 1) + ηR<sub>sparse</sub><br>λ ← max(0, λ + lr<sub>dual</sub> · (C/B − 1))</div>
 <h3>预算如何影响 checkpoint 选择？</h3><div class="diagram"><div class="diagram-head"><p class="label">FEASIBILITY DEMO · SYNTHETIC VALUES</p><span class="chip">教学示意，无实验结果</span></div><label for="budget-slider">部署预算 B：<output id="budget-value"></output> 个示意单位</label><input id="budget-slider" type="range" min="50" max="200" step="5" value="100"><div id="budget-results" aria-live="polite"></div><p class="caption">图 11 · 先过滤成本超标者，再在合格集合中最小化误差。更低误差但超预算的 checkpoint 不能获选。</p></div>
@@ -138,7 +138,7 @@ optimizer.step()
 
 hard = net.discretize().eval()
 mp5 = net.select_solver("mp5_llf")  # 强制经典见证路径`;
-pages.quickstart=()=>head('10','QUICKSTART','从可运行接口，到冻结的训练实验。','运行位置是代码仓库根目录，环境需要 PyTorch 和 NumPy。下面先用常值解检查接口，再准备真正的 Burgers 多网格预算实验。')+`
+pages.quickstart=()=>head('11','QUICKSTART','从可运行接口，到冻结的训练实验。','运行位置是代码仓库根目录，环境需要 PyTorch 和 NumPy。下面先用常值解检查接口，再准备真正的 Burgers 多网格预算实验。')+`
 <div class="note">代码锚定 <code>7b302f507d3ef6707be63ff099b91376a6573adb</code>，分支 <code>codex/burgers-budget-search</code>。需要已有源码仓库访问权限。网页只解释与生成配置，不会在浏览器内启动训练。</div>
 <h3>1. 构建 catalogue supernet</h3>${code('Python · 最小工程示例',smokeCode)}
 <p class="small"><code>rollout</code> 输出包含初态，shape 为 <code>[B, steps+1, N]</code>。内部初始化增广状态一次，避免每步重置 DG slope 或 frozen LF speed。<code>initialization="mp5"</code> 是软偏置，不等于精确 MP5；直接 builder 的默认初始化为 uniform，预算训练默认显式选择 mp5。</p>
@@ -171,7 +171,7 @@ python -m solver_sculpt.hierarchy.burgers_budget_search validate \\
   --output results/euler2d-search \\
   --epochs 20 --batch-size 8 --rollout-steps 4 \\
   --lr 0.001 --sparsity-weight 0.0001 --cfl 0.2 --seed 0`)}<p>这是接口示例；科学运行同样需要先冻结实验目录、代码、数据和协议。通用训练器没有自动继承 Burgers budget trainer 的多网格和成本控制。</p></details>`;
-pages.sources=()=>head('11','SCOPE & SOURCES','让图示与实现保持一致。','这份文档解释的是固定代码快照中的组件与搜索流程。算法可表示、实现通过回归、搜索有效、benchmark 更优，是四个不同的结论。')+`
+pages.sources=()=>head('12','SCOPE & SOURCES','让图示与实现保持一致。','既有实现章节解释固定代码快照中的组件与搜索流程；「完整轨迹 E2E 训练」单独记录待验证的新设计。算法可表示、实现通过回归、搜索有效、benchmark 更优，是四个不同的结论。')+`
 <div class="diagram">${flow([['可表示','有可选路径与完整展开'],['实现一致','独立 oracle / 梯度 / 回放测试'],['搜索有效','硬模型在独立数据上改进'],['推进 frontier','同 benchmark 协议实测']])}<p class="caption">图 12 · 左侧证据不能自动推出右侧结论。本指南不新增任何训练精度或性能结果。</p></div>
 <h3>范围与容易混淆的地方</h3>${table(['陈述','精确解释'],[['64 个 Burgers 配置','冻结 main 目录的 method IDs；含别名与组合，不是 64 种独立理论算法'],['L1 / L2 覆盖','两个 catalogue 搜索空间都能选择这些数值路径；同 Δt、periodic、float64'],['跨方程共享','18 个方程 ID 有基础默认 supernet；不代表每个方程的所有原生 solver / 场景'],['默认初始化','通用 default=baseline；catalogue builder=uniform；budget trainer=mp5'],['controller DSL','时间步算术可展开；动态循环由专用有界 Python runtime 执行'],['Mixture 与稳定性','全局凸权重不自动证明组合后的 TVD、SSP、保正或熵稳定'],['成本','本项目结构 DAG 代理与 HyperBench 成本、wall time 分开解释'],['测试与实验','工程回归用于验证实现，不构成新 solver 的性能结论']])}
 <h3>实现入口</h3><ul class="source-list">${[
@@ -259,3 +259,56 @@ assert result.counters[0]["accepted"] == 2
 assert result.counters[0]["rejected"] == 0
 print(result.traces[0])  # 查看两个实际 dt 与接受记录`)}
 <div class="note">这个例子演示运行时调整 Δt，没有进行训练。接入 BudgetSearchModel 后，CFL raw 和 controller gate 才会作为参数由优化器更新。详细的五层控制映射、可学习范围与梯度限制见 <a href="#controllers">CFL、拒步与回退</a>。</div>`;
+
+
+pages['e2e-training']=()=>head('08','TRAINING DESIGN · 2026-09-24','在同一段物理时间内，一起学习算法与步长。','从初态出发，用同一个 supernet 自回归推进到 T。重构、通量、推进器和 CFL 控制器共同决定轨迹；用轨迹误差与单位物理时间成本联合训练。')+`
+<div class="note"><strong>本次确定的设计，尚待实现与实验验证。</strong>本页采用 batch <strong>标准差</strong>归一化、λ=1；不使用误差估计、拒步或重试。其他章节描述已有实现，包括不同的控制与预算策略，不能直接视为本方案的实现。</div>
+<h3>先看最终的训练目标</h3>
+<div class="equation">L<sub>batch</sub> = mean(E) / stopgrad(max(std(E), ε<sub>E</sub>))<br>　　　　 + mean(C) / stopgrad(max(std(C), ε<sub>C</sub>))</div>
+<p>E 是每条完整轨迹上的误差加权求和，C 是平均一步计算量除以平均建议步长。先为 batch 中每条轨迹计算一个 E 和一个 C，再分别计算标准差；两个归一化项直接相加。</p>
+<h3>1 · 四个模块如何组成一步</h3>
+<div class="diagram"><div class="diagram-head"><p class="label">ONE STEP · FOUR MODULES</p><span class="chip">循环至 t = T</span></div>
+<div class="e2e-modules"><div class="node teal"><b>重构 R</b><span>单元均值 u → 界面左右状态</span></div><div class="node blue"><b>通量 F</b><span>左右状态 → 共享界面通量 → 空间残差 A(u)</span></div><div class="node purple"><b>推进器 P</b><span>用 A 与 Δt 计算各阶段，混合候选更新 → uⁿ⁺¹</span></div><div class="node amber"><b>控制器 H</b><span>状态 / 波速 → CFL → 建议 h → 实际 Δt，送入推进器</span></div></div>
+<p class="caption">依赖：R → F → P；H → P。P 在中间阶段重复调用同一套 R、F。输出状态反馈到下一步。通量后的散度是固定的守恒组装，不增加一个搜索模块。</p></div>
+<div class="equation">A<sub>Θ</sub>(u)<sub>i</sub> = −(F̂<sub>i+½</sub> − F̂<sub>i−½</sub>) / Δx<br>Θ = {重构参数与 gate，通量参数与 gate，推进器 gate α，控制器参数 φ}</div>
+<p>重构与通量在各自兼容接口上做归一化加权混合。所有阶段共享这些参数；边界条件与守恒散度保持一致。不同物理方程应使用相应的特征波速，不把 Burgers 的公式直接用于所有 PDE。</p>
+<h3>2 · 控制器选步，完整轨迹决定步数</h3>
+<div class="equation">ν<sub>φ</sub>(zₙ) = ν<sub>min</sub> + (ν<sub>max</sub> − ν<sub>min</sub>) sigmoid(g<sub>φ</sub>(zₙ))<br>hₙ = ν<sub>φ</sub>(zₙ) Δx / a<sub>Θ</sub>(uₙ)<br>Δtₙ = min(hₙ, T − tₙ)<br>tₙ₊₁ = tₙ + Δtₙ</div>
+<p>先从一个全局可学习 CFL 开始；以后可把 g 扩展为状态相关函数。Burgers 的一种波速选择是 a=max(a<sub>floor</sub>, max|u<sub>L</sub>|, max|u<sub>R</sub>|)，波速下限避免除零。CFL 上下界要与候选数值方法兼容；限幅 CFL 本身不是任意混合算法稳定性的证明。</p>
+<p><strong>h 是截断前的建议步长；Δt 是真正推进的时间。</strong>最后一步用 Δt 恰好到达 T。每条轨迹的 N 可以不同，不限制为 rollout4，也不在每一步喂回参考状态。失稳、非有限值或超出工作量上限的轨迹需要记录为失败，不能删除后只平均成功样本；具体失败处理策略需在实验协议中固定。</p>
+<h3>3 · 混合推进器，而不是只混合空间模块</h3>
+<div class="equation">π = softmax(α)<br>uₙ₊₁ = Σ<sub>k</sub> π<sub>k</sub> P<sub>k</sub>(uₙ, Δtₙ; A<sub>Θ</sub>)<br>P<sub>k</sub> ∈ {Euler, SSPRK2, SSPRK3}</div>
+<p>各候选从同一个 uₙ 出发，使用同一个实际 Δtₙ，先算各自完整一步，再加权得到下一状态。参考解只用于计算损失。带有 Euler 权重的混合一般不能保留三阶精度，阶数与稳定性需要独立验证。</p>
+<details><summary>展开三个候选，查看共享的计算</summary>
+<div class="equation">k₁ = A(u)；v = u + Δt k₁；P₁ = v<br>k₂ = A(v)；P₂ = ½u + ½(v + Δt k₂)<br>w = ¾u + ¼(v + Δt k₂)<br>k₃ = A(w)；P₃ = ⅓u + ⅔(w + Δt k₃)</div>
+<p>共享后，完整软混合需要 3 次空间残差求值，而不是 1+2+3=6 次。只要三个候选仍被执行，某个 gate 变小就不会自动减少实际运算。结构成本必须按执行图及共享节点计算。</p></details>
+<h3>4 · 精度：在真实推进时刻上做加权求和</h3>
+<p>对第 b 条轨迹，参考解在实际到达的 t<sub>b,n</sub> 上查询。以均匀网格标量问题的单元均值 MSE 为例：</p>
+<div class="equation">e<sub>b,n</sub> = (1 / N<sub>x</sub>) Σ<sub>i=1…Nₓ</sub> [u<sub>b,n,i</sub> − u*<sub>b,i</sub>(t<sub>b,n</sub>)]²<br>E<sub>b</sub> = Σ<sub>n=0…Nᵦ−1</sub> Δt<sub>b,n</sub> · (e<sub>b,n</sub> + e<sub>b,n+1</sub>) / 2</div>
+<p>这就是梯形求和：每段时间乘以两端误差的平均值，再把所有段相加。不是按步数简单平均，也不要求固定监督时刻。若初态一致，e<sub>b,0</sub>=0。这里保留误差的时间累积量，不再除以 T；所有样本采用相同物理时长。</p>
+<p>例如 Δt=[0.1, 0.2]，三个时刻的误差为 [0, 0.02, 0.05]，则 E=0.1×0.01+0.2×0.035=0.008。该数值仅用于解释公式。</p>
+<div class="note">时间戳也依赖训练参数：u*(t) 应使用可微解析解或经过验证的可微时间插值，保留查询时间的梯度。大步长可能漏掉区间中的误差峰值，因此评估时还应使用更密的独立参考采样检查求和误差。</div>
+<h3>5 · 成本：平均一步计算量 / 平均建议步长</h3>
+<div class="equation">c̄<sub>b</sub> = (1 / N<sub>b</sub>) Σₙ c<sub>b,n</sub><br>h̄<sub>b</sub> = (1 / N<sub>b</sub>) Σₙ h<sub>b,n</sub><br>C<sub>b</sub> = c̄<sub>b</sub> / h̄<sub>b</sub> = (Σₙ c<sub>b,n</sub>) / (Σₙ h<sub>b,n</sub>)</div>
+<p>c 是依据网络执行结构直接计算的工作量，例如算子计数或固定权重的运算量，包含全部执行候选、RK 阶段和控制器，并扣除共享子表达式的重复计数。无需另训成本预测网络，但它表示计算工作量，不等于设备上的实际耗时。</p>
+<p><strong>训练分母使用建议 h，而不是末步截断后的 Δt。</strong>若改用实际 Δt，则 ΣΔt=T，目标变为 Σc/T；固定执行步数的区域内，常量每步成本对步长没有梯度，只有跨越步数边界时才跳变。建议步长保留了局部效率信号，例如常量 c、h 时 C=c/h，∂C/∂h=−c/h²。</p>
+${table(['量','用途','需要注意'],[['Σc / Σh','训练的成本率近似','末步未截断 h 会引入偏差；不是 mean(c/h)'],['Σc / T','评估真实执行工作量率','按真实执行步数计数'],['实际 wall time / T','测量设备运行效率','包含内存、并行与调度影响，另行实测']])}
+<p>因此这里仍是一个<strong>解析成本近似</strong>，不是耗时的精确可微表达式。普通自动微分只沿实际执行路径工作，N 的变化是离散的，整个目标只能在部分区域内可微。完整软混合若执行图固定，c 对 gate 没有直接梯度；gate 仍可通过状态、波速和 h 影响成本。若要奖励硬结构剪枝，需要另行定义并验证导出结构的成本目标。</p>
+<h3>6 · Batch 标准差归一化，两个系数都取 1</h3>
+<p>一个 batch 包含 B 条轨迹，每条产生一对 (E<sub>b</sub>, C<sub>b</sub>)。分别计算总体标准差，对应 PyTorch 的 <code>unbiased=False</code>：</p>
+<div class="equation">μ<sub>E</sub> = (1/B) Σ<sub>b=1…B</sub> E<sub>b</sub><br>σ<sub>E</sub> = √[(1/B) Σ<sub>b=1…B</sub> (E<sub>b</sub> − μ<sub>E</sub>)²]<br>μ<sub>C</sub> = (1/B) Σ<sub>b=1…B</sub> C<sub>b</sub><br>σ<sub>C</sub> = √[(1/B) Σ<sub>b=1…B</sub> (C<sub>b</sub> − μ<sub>C</sub>)²]<br>s<sub>E</sub> = stopgrad(max(σ<sub>E</sub>, ε<sub>E</sub>))<br>s<sub>C</sub> = stopgrad(max(σ<sub>C</sub>, ε<sub>C</sub>))<br><strong>L<sub>batch</sub> = μ<sub>E</sub>/s<sub>E</sub> + μ<sub>C</sub>/s<sub>C</sub></strong></div>
+<p>用标准差而不是方差，分子与分母单位一致；改变误差或成本的计量单位时，若保护下限同比缩放，归一化项不变。分子保留原始均值，<strong>不减 batch 均值</strong>，否则平均后的目标会变成零。</p>
+<p>分母停止梯度，避免优化器通过改变分母来降低本次损失。ε<sub>E</sub>、ε<sub>C</sub> 是各自单位下的正下限，防止零方差时除零；具体值需要按数据量级确定。B=1 或样本几乎相同时，权重会由下限主导，应记录这一情况。</p>
+${code('PyTorch · 目标计算示意（不是现有训练 API）',`# E, C: shape [B]; 每项来自一条推进到 T 的完整轨迹
+scale_E = E.detach().std(unbiased=False).clamp_min(eps_E)
+scale_C = C.detach().std(unbiased=False).clamp_min(eps_C)
+loss = E.mean() / scale_E + C.mean() / scale_C
+
+optimizer.zero_grad()
+loss.backward()
+optimizer.step()`)}
+<div class="note">这是一种按 batch 波动尺度重标度的方法。λ=1 不意味着两项梯度相等，也不自动确定最合适的精度–效率交换比例。应同时记录原始 E、C、标准差、下限触发率及各项梯度贡献。</div>
+<h3>7 · 一次参数更新的完整顺序</h3>
+<ol><li>采样 B 个初态，准备共同的物理终点 T、网格及可查询的参考解。</li><li>每条轨迹从自身预测状态连续推进：控制器选 h、末步截断、混合推进器更新；记录时间、误差和结构工作量。</li><li>推进到 T 后，用真实 Δt 计算 E，用建议 h 计算 C；在 batch 内计算停止梯度的标准差尺度。</li><li>对完整 batch loss 反向传播，一起更新四个模块的参数与 gate。中间状态不 detach；内存不足时可采用保留梯度语义的 checkpoint 重计算。</li><li>独立评估完整轨迹、失败率、工作量与真实耗时；若导出硬 solver，重新运行评估，不能沿用软混合的指标。</li></ol>
+<p class="small">可微范围包括已执行各步的状态、波速、建议步长、实际时间、参考时间查询和数值更新。max/min 的切换、动态循环次数与硬剪枝不具有普通意义下的全局光滑梯度。实现前需把候选兼容范围、成本计数、参考插值、数值保护和失败处理写入固定协议。</p>
+`;

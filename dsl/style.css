@@ -4,3 +4,10 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}@media print{.topbar,.sidebar,.heading,.stats,.next,footer{display:none}.workspace{display:block}.shell{padding:0}article{border:0;padding:0}.diagram,.card{break-inside:avoid}.codebox{background:white;color:black}.code-head{color:black}.copy{display:none}}
 article p,article li,.side-note,.source-list a,.source-list span{overflow-wrap:anywhere}.weno-paths{margin:15px 0}.weno-row{display:grid;grid-template-columns:1fr 20px 105px;align-items:center;gap:10px}.weno-row .stencil{margin:5px 0}.weno-row .cell{padding:8px 2px;font-size:12px}.weno-row .token{font-size:13px;text-align:center;padding:8px}.weno-row>span{color:var(--teal)}@media(max-width:760px){.weno-row{grid-template-columns:1fr 12px 72px;gap:5px}.weno-row .token{padding:7px 2px;font-size:12px}}
 .walk-level{display:grid;grid-template-columns:48px minmax(0,1fr);gap:16px;margin:30px 0;padding-top:26px;border-top:1px solid var(--line)}.walk-badge{font:600 18px ui-monospace,monospace;background:#e6f1ed;color:var(--teal);border:1px solid #b5d1c7;border-radius:6px;padding:10px 7px;align-self:start;text-align:center}.walk-level h3{margin-top:0}.walk-level .flow{flex-wrap:wrap}.walk-level .node{min-width:120px}@media(max-width:760px){.walk-level{grid-template-columns:1fr;gap:12px}.walk-badge{justify-self:start}.walk-level .stencil{grid-template-columns:repeat(3,1fr)}}
+
+/* Full-trajectory training design: four modules, explicit dependency caption. */
+.e2e-modules{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.e2e-modules .node{min-width:0;text-align:left}
+#content details{margin:20px 0;padding:16px;border:1px solid var(--line,#dde5e8);border-radius:12px}
+#content summary{cursor:pointer;font-weight:650}
+@media(max-width:760px){.e2e-modules{grid-template-columns:1fr}}

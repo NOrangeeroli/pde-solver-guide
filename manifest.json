@@ -3,7 +3,7 @@
   "codeRevision": "20b2e3c2372ee3b76b9450ba95cafdaefb6694ad",
   "sourceSites": {
     "hyperbench": "25464b44cb257ea865d3192426ffac3c3d0ec3a9",
-    "dsl": "5749ba52a8e1f5cc5adc0ac0e22b91c009318b82"
+    "dsl": "e6b82dee9c695c13b7ca3e663f17f2b349167fcd"
   },
   "tutorials": [
     {
@@ -111,5 +111,5 @@
       "sha256": "929d0320dd981b345e86b3de45cb123b04fc7e3ca10d81a8f3474984100f583b"
     }
   ],
-  "chapters": 35
+  "chapters": 36
 }
