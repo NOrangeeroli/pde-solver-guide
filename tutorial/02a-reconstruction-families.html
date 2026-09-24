@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>常见重构类型 · PDE Solver</title><meta name="description" content="PC、MUSCL、PPM、ENO、WENO、TENO 与 MP5。"><meta name="theme-color" content="#20394a"><link rel="stylesheet" href="../assets/katex/katex.min.css"><link rel="stylesheet" href="../assets/texmath.css"><script src="../assets/mermaid.min.js" defer></script><script src="../assets/tutorial.js" defer></script><link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/portal.css"><script src="../assets/portal.js" data-root="../" defer></script></head><body class="learning-site"><a class="portal-skip" href="#content">跳到正文</a><header class="portal-bar"><a class="portal-brand" href="../index.html" aria-label="PDE Solver 首页"><span class="portal-mark">P</span><span>PDE SOLVER<small>LEARN · BENCHMARK · DESIGN</small></span></a><nav class="portal-nav" aria-label="网站栏目"><a href="../tutorial/index.html" aria-current="page">入门教程</a><a href="../hyperbench/index.html">HyperBench</a><a href="../dsl/index.html">组件 DSL</a></nav><button class="portal-search" type="button" aria-label="搜索三个栏目的文档"><span aria-hidden="true">⌕</span><span>搜索文档</span><kbd>/</kbd></button></header><main class="lesson-shell"><div class="lesson-breadcrumb"><a href="../index.html">首页</a><span>/</span><a href="index.html">入门教程</a><span>/</span><span>补充 A</span><button class="toggle-lessons" aria-expanded="false" aria-controls="lesson-sidebar">展开课程目录</button></div><div class="lesson-layout"><aside class="lesson-sidebar" id="lesson-sidebar"><p class="kicker">LEARNING PATH</p><a class="course-home" href="index.html">课程总览</a><p class="nav-group">数值基础</p><nav aria-label="数值基础"><a href="01-conservation-grid-flux.html"><span>01</span>守恒、网格与通量</a><a href="02-reconstruction-riemann.html"><span>02</span>重构与界面状态</a><a href="03-linear-reconstruction-limiters.html"><span>03</span>线性重构与限制器</a><a href="04-weno-candidates-weights.html"><span>04</span>WENO：候选与权重</a><a href="05-burgers-riemann-flux.html"><span>05</span>Burgers 与 Godunov 通量</a></nav><p class="nav-group">时间与边界</p><nav aria-label="时间与边界"><a href="06-residual-time-integration.html"><span>06</span>残差与时间推进</a><a href="07-boundaries-cfl.html"><span>07</span>边界条件与 CFL</a></nav><p class="nav-group">理解组件体系</p><nav aria-label="理解组件体系"><a href="08-one-step-five-levels.html"><span>08</span>同一步计算的 L0–L4</a><a href="09-component-contracts-and-replacement.html"><span>09</span>组件替换与接口</a><a href="10-learnable-choices-and-hard-solvers.html"><span>10</span>可学习组件与软硬选择</a></nav><p class="nav-group">配套阅读</p><nav aria-label="配套阅读"><a href="02a-reconstruction-families.html" aria-current="page"><span>补充 A</span>常见重构类型</a><a href="05a-flux-families.html"><span>补充 B</span>常见数值通量</a><a href="07a-step-controller-retries.html"><span>补充 C</span>控制器与重试</a></nav><div class="reading-note">只需要导数与数组基础。<br>循着一个时间步，逐步理解。</div></aside><article class="lesson-article" id="content" tabindex="-1"><header class="lesson-heading"><p class="kicker">COMPANION READING / 从守恒到组件</p><h1>常见重构类型</h1><p>PC、MUSCL、PPM、ENO、WENO、TENO 与 MP5。</p></header><details class="on-this-page"><summary>本讲内容</summary><nav aria-label="本讲目录"><a href="#section-1">1. 共同任务：平均值变成界面状态</a><a href="#section-2">2. 七类常见选择</a><a href="#section-3">3. 最容易混淆的四种高阶机制</a><a href="#section-4">4. 家族、限制器、权重和变量是不同的选择轴</a><a href="#section-5">5. 对应仓库：按具体入口确认支持范围</a><a href="#section-6">6. 与 L1/L2 拆分怎样对应？</a><a href="#section-7">7. 自测：换掉了哪个部分？</a></nav></details><div class="lesson-body"><p>本篇给第二至第四讲增加一张方法地图。先记住各类方法怎样得到界面状态，
+再把它们放回仓库的组件层级；不要求一次记住全部公式。</p>
+<h2 id="section-1">1. 共同任务：平均值变成界面状态</h2>
+<p>在本教程的一维有限体积语境中，重构模块的职责是：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mo stretchy="false">{</mo><msub><mover accent="true"><mi>u</mi><mo>ˉ</mo></mover><mi>j</mi></msub><msub><mo stretchy="false">}</mo><mrow><mi>j</mi><mo>∈</mo><mtext>邻域</mtext></mrow></msub><mover><mo stretchy="true" minsize="3.0em">→</mo><mpadded width="+0.6em" lspace="0.3em"><mtext>重构</mtext></mpadded></mover><mrow><mo fence="true">(</mo><msubsup><mi>u</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow><mi>L</mi></msubsup><mo separator="true">,</mo><msubsup><mi>u</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow><mi>R</mi></msubsup><mo fence="true">)</mo></mrow><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+\{\bar u_j\}_{j\in\text{邻域}}
+\xrightarrow{\text{重构}}
+\left(u^L_{i+1/2},u^R_{i+1/2}\right).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.3864em;vertical-align:-0.2861em;"></span><span class="mopen">{</span><span class="mord"><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.5678em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">u</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.2222em;"><span class="mord">ˉ</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose"><span class="mclose">}</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span><span class="mrel mtight">∈</span><span class="mord text mtight"><span class="mord cjk_fallback mtight">邻域</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel x-arrow"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1003em;"><span style="top:-3.322em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight x-arrow-pad"><span class="mord mtight"><span class="mord text mtight"><span class="mord cjk_fallback mtight">重构</span></span></span></span></span><span class="svg-align" style="top:-2.689em;"><span class="pstrut" style="height:2.7em;"></span><span class="hide-tail" style="height:0.522em;min-width:1.469em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.522em" viewBox="0 0 400000 522" preserveAspectRatio="xMaxYMin slice"><path d="M0 241v40h399891c-47.3 35.3-84 78-110 128
+-16.7 32-27.7 63.7-33 95 0 1.3-.2 2.7-.5 4-.3 1.3-.5 2.3-.5 3 0 7.3 6.7 11 20
+ 11 8 0 13.2-.8 15.5-2.5 2.3-1.7 4.2-5.5 5.5-11.5 2-13.3 5.7-27 11-41 14.7-44.7
+ 39-84.5 73-119.5s73.7-60.2 119-75.5c6-2 9-5.7 9-11s-3-9-9-11c-45.3-15.3-85
+-40.5-119-75.5s-58.3-74.8-73-119.5c-4.7-14-8.3-27.3-11-40-1.3-6.7-3.2-10.8-5.5
+-12.5-2.3-1.7-7.5-2.5-15.5-2.5-14 0-21 3.7-21 11 0 2 2 10.3 6 25 20.7 83.3 67
+ 151.7 139 205zm0 0v40h399900v-40z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.011em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.8em;vertical-align:-0.65em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size2">(</span></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.428em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1/2</span></span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.447em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.428em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1/2</span></span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0077em;">R</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.447em;"><span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size2">)</span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">.</span></span></span></span></span></eqn></section><p>输入是若干格的平均值，输出是同一个界面两侧的估计。后续的通量模块再接收
+这两个状态，产生一个公共数值通量。有的实现显式构造格内多项式，有的只计算
+需要的边界值；程序不必真的存下整条曲线。</p>
+<p>例如相邻三格平均值为 1、2、3，局部数据来自线性增长：对中间格的<strong>右端</strong>，
+PC 给出 2；使用 minmod 的线性重构得到斜率增量 1，给出 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn><mo>=</mo><mn>2.5</mn></mrow><annotation encoding="application/x-tex">2+1/2=2.5</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1/2</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">2.5</span></span></span></span></eq>。
+它们在完成同一个估计任务，但使用的信息不同。这里只计算了界面的左状态；
+右状态还要由右邻格重构。</p>
+<h2 id="section-2">2. 七类常见选择</h2>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>类型</th>
+<th>怎样估计界面状态</th>
+<th>怎样应对间断或陡变</th>
+<th>读代码时先找什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PC / PCM：分片常数</strong></td>
+<td>整格取单元平均，直接作为端点值</td>
+<td>不引入额外格内变化；配合合适的通量与时间步，是最简单的基线</td>
+<td>读取本格与邻格，没有斜率</td>
+</tr>
+<tr>
+<td><strong>PLM / MUSCL：分片线性</strong></td>
+<td>邻居差分估计斜率，再取平均值加减半个斜率增量</td>
+<td>limiter 减小不合适的斜率，必要时退回常数</td>
+<td>差分、斜率限制、端点计算</td>
+</tr>
+<tr>
+<td><strong>PPM：分片抛物线</strong></td>
+<td>用端点值和单元平均确定格内二次曲线</td>
+<td>对端点和曲线形状施加单调性约束；具体版本还可有其他修正</td>
+<td>界面插值、曲率、形状限制</td>
+</tr>
+<tr>
+<td><strong>ENO：本质无振荡重构</strong></td>
+<td>自适应选择一个较光滑的模板，在该模板上重构</td>
+<td>尽量避开跨越间断的数据</td>
+<td>差分比较、模板选择、候选求值</td>
+</tr>
+<tr>
+<td><strong>WENO：加权 ENO</strong></td>
+<td>组合多个小模板得到的候选界面值</td>
+<td>用平滑度调整非线性权重，降低不光滑候选的贡献</td>
+<td>候选、平滑度、评分、归一化加权</td>
+</tr>
+<tr>
+<td><strong>TENO：目标 ENO</strong></td>
+<td>筛选候选模板，再组合留下的候选</td>
+<td>用传感器与阈值剔除不光滑候选，保留者采用重新归一化的线性权重</td>
+<td>平滑度传感器、开关、线性权重归一化</td>
+</tr>
+<tr>
+<td><strong>MP5：五阶保单调重构</strong></td>
+<td>先算高阶候选界面值，再检查是否需要限制</td>
+<td>通过利用邻域差分和曲率的约束修正候选，尽量保留光滑区域的高阶信息</td>
+<td>五阶预测、是否限幅的判定、允许区间</td>
+</tr>
+</tbody>
+</table></div><p>这些名称的分类依据并不完全相同：PC、PLM、PPM 强调格内形状；ENO、WENO、
+TENO 强调模板选择或组合机制；MP5 强调高阶预测与保单调限制。它们也不是
+一条“越往下越好”的排名。</p>
+<p>PC 通常是一阶空间重构，PLM 通常为二阶；PPM 使用二次格内曲线。
+ENO3、WENO3、WENO5、TENO5、MP5 名字中的数字表示相应构造的空间设计阶数。
+这些阶数需要相应的光滑性和参数条件；限制器激活、光滑极值或间断附近的
+表现要另行分析。<strong>多项式次数、空间精度、整个 solver 的时空精度是三个概念</strong>：
+例如 WENO5 可以组合三个二次多项式的边界估计，达到五阶空间设计精度。</p>
+<p>关于有限体积重构及 ENO/WENO 的模板思想，见
+<a href="https://academicweb.nd.edu/~yzhang10/WENO_ENO.pdf">Zhang 与 Shu 的综述，第 2 节</a>；
+PPM、TENO、MP5 的方法来源分别见
+<a href="https://www.sciencedirect.com/science/article/pii/0021999184901438">Colella 与 Woodward</a>、
+<a href="https://portal.fis.tum.de/en/publications/a-family-of-high-order-targeted-eno-schemes-for-compressible-flui/">Fu、Hu 与 Adams</a>、
+<a href="https://ntrs.nasa.gov/citations/19970010128">Suresh 与 Huynh</a>。</p>
+<h2 id="section-3">3. 最容易混淆的四种高阶机制</h2>
+<p>面对“有些邻居平滑，有些邻居跨越间断”的情况，可以用下面四句话区分：</p>
+<ul>
+<li><strong>ENO：选择一个模板。</strong> 经典 ENO 通过逐步比较差商来扩展模板；不能简单等同于计算 WENO 的三个平滑度后取最小者。</li>
+<li><strong>WENO：调整多个候选的权重。</strong> 以第四讲的 JS 为例，不光滑候选通常获得很小的正权重，并不直接被删除。</li>
+<li><strong>TENO：先保留或剔除，再加权。</strong> 被剔除候选的权重为零；所有模板都通过判定时，恢复背景线性组合。</li>
+<li><strong>MP5：先预测，再按需要限制。</strong> 核心是高阶候选和约束过程，不是 WENO 的另一套非线性权重。</li>
+</ul>
+<p>沿用第四讲的候选值 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">q_k</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq> 与固定权重 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">d_k</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq>，TENO 的组合步骤可概括为：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>δ</mi><mi>k</mi></msub><mo>∈</mo><mo stretchy="false">{</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">}</mo><mo separator="true">,</mo><mspace width="2em"/><msub><mi>ω</mi><mi>k</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>d</mi><mi>k</mi></msub><msub><mi>δ</mi><mi>k</mi></msub></mrow><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>d</mi><mi>j</mi></msub><msub><mi>δ</mi><mi>j</mi></msub></mrow></mfrac><mo separator="true">,</mo><mspace width="2em"/><msup><mi>u</mi><mi>L</mi></msup><mo>=</mo><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>ω</mi><mi>k</mi></msub><msub><mi>q</mi><mi>k</mi></msub><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+\delta_k\in\{0,1\},\qquad
+\omega_k=\frac{d_k\delta_k}{\sum_j d_j\delta_j},\qquad
+u^L=\sum_k\omega_kq_k.
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0379em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">{</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">}</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">ω</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4933em;vertical-align:-1.1218em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.162em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4358em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0379em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0379em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.1218em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3521em;vertical-align:-1.3021em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.05em;"><span style="top:-1.8479em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3021em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">ω</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">.</span></span></span></span></span></eqn></section><p>这里 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>δ</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">\delta_k</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0379em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq> 是由具体 TENO 传感器和阈值决定的保留开关。
+这是机制示意；完整实现还必须明确传感器、参数，以及非零分母的保障。
+因此 TENO 的 cutoff、WENO 的评分方式、MP5 的允许区间，都值得作为内部机制
+单独理解。TENO 的候选剔除思想见
+<a href="https://portal.fis.tum.de/en/publications/a-family-of-high-order-targeted-eno-schemes-for-compressible-flui/">原论文的作者机构记录</a>。</p>
+<h2 id="section-4">4. 家族、限制器、权重和变量是不同的选择轴</h2>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>选择轴</th>
+<th>例子</th>
+<th>它改变什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>重构家族</td>
+<td>PC、MUSCL、PPM、ENO、WENO、TENO、MP5</td>
+<td>得到界面状态的总体过程</td>
+</tr>
+<tr>
+<td>斜率限制器</td>
+<td>minmod、MC、superbee、van Leer、van Albada</td>
+<td>对 MUSCL 等构造中的局部变化量怎样限幅</td>
+</tr>
+<tr>
+<td>WENO 权重构造</td>
+<td>JS、Z</td>
+<td>怎样从平滑度等信息得到候选权重</td>
+</tr>
+<tr>
+<td>重构变量</td>
+<td>守恒变量、原始变量、特征变量</td>
+<td>在哪些量上执行重构</td>
+</tr>
+<tr>
+<td>重构参数</td>
+<td>模板宽度、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi></mrow><annotation encoding="application/x-tex">\epsilon</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">ϵ</span></span></span></span></eq>、TENO cutoff、limiter 参数</td>
+<td>给定机制的具体数值行为</td>
+</tr>
+</tbody>
+</table></div><p>例如 <code>muscl_minmod</code> 与 <code>muscl_mc</code> 可以共享差分与端点计算，只替换斜率限制。
+<code>weno5_js</code> 与 <code>weno5_z</code> 可以共享候选与平滑度，改变权重评分。
+不同家族不一定拥有同样的内部选项，不能把所有选项任意交叉组合。</p>
+<p>对 Euler 这类方程组，“重构变量”需要额外留意。守恒变量可以是密度、动量、
+总能量；原始变量可以是密度、速度、压力。特征重构则先把邻域状态投影到一个
+局部波基底，分别重构，再变回状态。因此“特征 WENO”仍属于 WENO 家族，只是
+使用了不同的变量表示。变量之间的非线性转换还涉及平均值与点值的区别，不能
+默认它们可以任意互换。</p>
+<p>另一个命名细节：MUSCL 和 PPM 在文献中也可指包含时间预测等步骤的完整方法。
+本表比较的是它们的<strong>空间重构职责</strong>。例如 MUSCL–Hancock 中的半步预测，
+应与这里单独讲解的格内线性重构区分；完整 PPM 也可能包括特征追踪、激波
+展平和接触间断陡化，而一个名为 <code>ppm</code> 的空间模块未必包含全部步骤。</p>
+<h2 id="section-5">5. 对应仓库：按具体入口确认支持范围</h2>
+<p>当前目录的早期 <a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/burgers.py"><code>burgers.py</code></a> 使用三类重构：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th><code>expert_flux</code> 名称</th>
+<th>实际重构</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rusanov</code>、<code>godunov</code></td>
+<td>PC</td>
+</tr>
+<tr>
+<td><code>muscl_minmod</code>、<code>muscl_mc</code></td>
+<td>MUSCL，加不同斜率限制器</td>
+</tr>
+<tr>
+<td><code>weno5</code></td>
+<td>WENO5-JS</td>
+</tr>
+</tbody>
+</table></div><p>这里 expert 的名字混合了重构与通量配置，不能将每个名字都当作独立的重构
+家族。较新的 <code>codex/hyperbolic-components-v1</code> 分支，核查提交为
+<code>90bf0dcc76899f6a6f8abc29dc474103681fcddb</code>，有多套组件入口：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>入口与固定版本源码</th>
+<th>本篇相关选择</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/programs/api.py"><code>programs/api.py</code> 的 <code>Recipe</code></a></td>
+<td><code>constant</code>；<code>muscl_minmod</code>、<code>muscl_mc</code>、<code>muscl_superbee</code>、<code>muscl_van_leer</code>、<code>muscl_van_albada_positive</code>；<code>eno3</code>；<code>weno3_js</code>、<code>weno5_js</code>、<code>weno5_z</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/solvers.py"><code>solvers.py</code> 的 <code>SolverSpec</code></a></td>
+<td>包含 PC、多个 MUSCL、WENO5、ENO3，另有 <code>ppm</code>、<code>teno5</code>、固定线性组合 <code>linear5</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/burgers_classical_fv.py"><code>burgers_classical_fv.py</code></a></td>
+<td>包含 PC、四种线性限制器、WENO3/5、<code>mp5</code>、<code>teno5</code>；这里 WENO 标签如 <code>weno5js</code> 不带下划线</td>
+</tr>
+</tbody>
+</table></div><p>这些文件属于上述分支，不在当前目录的早期源码中。某个方法在一套入口中
+存在，不代表所有入口都接受同一个字符串；也不代表每个方程、离散框架都可用。
+例如该版本 <code>Recipe.variables</code> 接受 <code>conservative</code> 和 <code>characteristic</code>，
+不能因为通用概念表出现原始变量，就向这个接口传入 <code>primitive</code>。</p>
+<p>进一步读实现时：</p>
+<ul>
+<li><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/programs/lowering.py"><code>programs/lowering.py</code> 的 <code>_reconstruction_l1</code></a>展示 MUSCL 的斜率机制，以及 WENO 的候选、平滑度、评分与归一化；特征重构在外围完成投影和逆变换。</li>
+<li><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/mechanisms.py"><code>mechanisms.py</code> 的 <code>eno3</code> 与 <code>ppm</code></a>分别展示递归差分选择和受限抛物线重构。这里的 <code>m.ppm</code> 明确不包含原始完整 PPM 的可选陡化、展平及特征时间追踪。</li>
+<li><a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/90bf0dcc76899f6a6f8abc29dc474103681fcddb/solver_sculpt/hierarchy/hyperbench_reconstruction.py"><code>hyperbench_reconstruction.py</code> 的 <code>mp5</code> 与 <code>teno5</code></a>展示高阶预测与限制、候选筛选与组合；该文件固定的 TENO 参数应随算法一并保留。</li>
+</ul>
+<h2 id="section-6">6. 与 L1/L2 拆分怎样对应？</h2>
+<p>在教学上的职责划分中，L1 可以选择完整重构方法，L2 则打开它的内部机制：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>L1 重构选择</th>
+<th>可进一步理解的内部机制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MUSCL</td>
+<td>邻域差分 → 限制斜率 → 计算端点</td>
+</tr>
+<tr>
+<td>PPM</td>
+<td>估计界面值 → 约束格内曲线 → 取边界状态</td>
+</tr>
+<tr>
+<td>ENO</td>
+<td>比较差分 → 选择模板 → 求值</td>
+</tr>
+<tr>
+<td>WENO</td>
+<td>候选与平滑度 → 权重评分 → 归一化组合</td>
+</tr>
+<tr>
+<td>TENO</td>
+<td>候选与传感器 → 保留开关 → 归一化组合</td>
+</tr>
+<tr>
+<td>MP5</td>
+<td>高阶预测与约束计算 → 判定是否限制 → 输出状态</td>
+</tr>
+</tbody>
+</table></div><p>表中的箭头表示数据依赖，不要求每一项都注册为独立的 L2 节点。某个版本也
+可能把完整 ENO 或 MP5 包成一个 L2 机制，再向更低层展开；实际粒度以该版本
+的注册和展开规则为准。</p>
+<p>替换 L1 重构时，要保留接口含义：左右状态属于同一界面，变量表示一致，
+所需邻域和边界数据可用。高阶方法常需要更宽模板，不能只改方法名而忽略边界。
+另外，有限差分 WENO 常重构分裂通量；其输入输出与这里的有限体积状态重构
+不同，不能仅凭都叫 WENO 就直接接到同一个接口。</p>
+<h2 id="section-7">7. 自测：换掉了哪个部分？</h2>
+<p>下面三项修改分别涉及什么职责？</p>
+<ol>
+<li><code>muscl_minmod</code> 改为 <code>muscl_mc</code>。</li>
+<li><code>weno5_js</code> 改为 <code>weno5_z</code>。</li>
+<li>保留 WENO5 重构，将后面的 Godunov 改为 Rusanov。</li>
+</ol>
+<details>
+<summary>展开答案</summary>
+<ol>
+<li>保持 MUSCL 家族，替换斜率限制机制。</li>
+<li>保持 WENO5 家族，替换权重构造。</li>
+<li>重构保持不变，替换界面通量模块。</li>
+</ol>
+<p>若将 WENO5 整体换成 MP5，则是换重构家族；不能把 MP5 当成一个新的 WENO
+权重公式。理解这些区别，才能判断一个搜索位置究竟允许替换整个模块，还是
+只允许替换模块内部的一项机制。</p>
+</details>
+</div><nav class="chapter-nav" aria-label="前后章节"><a href="10-learnable-choices-and-hard-solvers.html"><small>上一篇</small>← 可学习组件与软硬选择</a><a href="05a-flux-families.html"><small>下一篇</small>常见数值通量 →</a></nav><p class="chapter-source">教学内容 · 主线 10 讲 / 补充 3 篇 · <a href="../sources/tutorial/02a-reconstruction-families.md" download>下载本讲 Markdown</a></p></article></div></main><footer class="portal-footer"><span>PDE SOLVER · 从概念到实现</span><a href="../index.html">网站首页</a><a href="https://github.com/NOrangeeroli/pde-solver-guide">文档仓库 ↗</a><span>公开文档 · 源码链接可能需要访问权限</span></footer></body></html>

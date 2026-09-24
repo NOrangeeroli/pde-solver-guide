@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hyperbench · 结构与使用文档</title>
+    <meta
+      name="description"
+      content="Hyperbench 双曲 PDE 基准：场景与参考解、solver 接口、精度与 CPU 效率评测、规范计算模型。"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2320394a'/%3E%3Cpath d='M6 23V9m20 14V9M6 16h20' stroke='%23b9e7db' stroke-width='3'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="catalogue.js" defer></script>
+    <script src="content.js" defer></script>
+    <script src="app.js" defer></script>
+  <link rel="stylesheet" href="../assets/portal.css"><script src="../assets/portal.js" data-root="../" defer></script></head>
+  <body class="legacy-guide"><header class="portal-bar"><a class="portal-brand" href="../index.html" aria-label="PDE Solver 首页"><span class="portal-mark">P</span><span>PDE SOLVER<small>LEARN · BENCHMARK · DESIGN</small></span></a><nav class="portal-nav" aria-label="网站栏目"><a href="../tutorial/index.html">入门教程</a><a href="../hyperbench/index.html" aria-current="page">HyperBench</a><a href="../dsl/index.html">组件 DSL</a></nav><button class="portal-search" type="button" aria-label="搜索三个栏目的文档"><span aria-hidden="true">⌕</span><span>搜索文档</span><kbd>/</kbd></button></header>
+    <a class="skip" href="#content">跳到文档正文</a>
+    <header class="topbar">
+      <a class="brand" href="#overview"
+        ><span class="mark" aria-hidden="true">H</span
+        ><span>HYPERBENCH<small>HYPERBOLIC PDE BENCHMARK</small></span></a
+      >
+      <nav aria-label="主导航">
+        <a href="#quickstart">快速开始</a><a href="#cost">计算模型</a
+        ><a href="https://github.com/NOrangeeroli/hyperbench-pages"
+          >GitHub ↗</a
+        >
+      </nav>
+      <span class="version">DOCS / COMPACT V2</span>
+    </header>
+    <main class="shell">
+      <div class="heading">
+        <div>
+          <p class="eyebrow">BENCHMARK GUIDE / CLASSICAL PDE SOLVERS</p>
+          <h1>从方程，到可复核的结果<span>.</span></h1>
+          <p>理解基准结构，接入求解器，比较精度与计算成本。</p>
+        </div>
+        <a href="#architecture">查看模块结构 ↗</a>
+      </div>
+      <div class="stats" aria-label="基准范围">
+        <span><b>12</b>Compact 方程族</span><span><b>54 + 60</b>历史与复杂场景</span
+        ><span><b>11</b>Burgers 正式场景</span
+        ><span><b>61</b>v031 历史配置</span>
+      </div>
+      <div class="workspace">
+        <aside class="sidebar">
+          <p class="label">DOCUMENTATION</p>
+          <nav id="chapters" aria-label="文档目录"></nav>
+          <p class="side-note">
+            以实现与冻结实验为准。<br />明确区分测量结果、模型假设与未覆盖范围。
+          </p>
+        </aside>
+        <article class="article" id="content" tabindex="-1">
+          <h2>Benchmark 概览</h2>
+          <p>
+            Hyperbench 比较经典双曲 PDE 求解器的精度和计算效率。请启用
+            JavaScript 浏览全部章节。
+          </p>
+        </article>
+      </div>
+      <footer>
+        <span>HYPERBENCH / DOCUMENTATION</span><span id="revision"></span>
+      </footer>
+      <div id="notice" role="status" aria-live="polite"></div>
+    </main>
+  <footer class="portal-footer"><span>PDE SOLVER · 从概念到实现</span><a href="../index.html">网站首页</a><a href="https://github.com/NOrangeeroli/pde-solver-guide">文档仓库 ↗</a><span>公开文档 · 源码链接可能需要访问权限</span></footer></body>
+</html>

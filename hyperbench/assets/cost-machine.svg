@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="930" viewBox="0 0 1000 930" role="img" aria-labelledby="title desc">
+<title id="title">Hyperbench 抽象计算机器：计算、存储与通信</title>
+<desc id="desc">外部数据经过抽象传输通道进入快存工作区，计算单元读取工作区执行规范数值图。工作量 W、依赖深度 D 和政策流量 Q 汇入 max(W/P,D,Q/B)。工作区能放入 M 时只计初始读入和快照写出；否则使用完整逻辑流量。不是实机模拟器。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0 0L6 3L0 6" fill="none" stroke="#377c83" stroke-width="1.5"/></marker></defs>
+<style>text{font-family:system-ui,-apple-system,'PingFang SC',sans-serif;fill:#20394a}.title{font-size:25px;font-weight:700}.head{font-size:21px;font-weight:650}.body{font-size:18px}.small{font-size:16px;fill:#49616c}.code{font-family:ui-monospace,monospace;font-size:19px}.line{fill:none;stroke:#377c83;stroke-width:2.5;marker-end:url(#arrow)}.box{stroke:#c0d3d8;stroke-width:1.5;rx:14}</style>
+<rect width="1000" height="930" rx="18" fill="#f5f8fa"/>
+<text x="32" y="45" class="title">一台用于统一计价的抽象机器</text>
+<text x="32" y="75" class="small">数据路径是概念示意；模型分析计算图与计数，不实际搬运数据或模拟硬件执行。</text>
+<rect x="32" y="102" width="936" height="96" fill="#fff" class="box"/>
+<text x="55" y="136" class="head">① 外部数据 / 输出端</text>
+<text x="55" y="169" class="body">初始场：8N 字节读入　　→　　一次 rollout　　→　　S 张快照：8NS 字节写出</text>
+<path d="M225 207V286" class="line" marker-start="url(#arrow)"/>
+<text x="250" y="238" class="head">② 抽象传输通道 · B = 64 bytes/tick</text>
+<text x="250" y="268" class="body">传输成本 Q / B；Q 由工作区容量政策选择</text>
+<rect x="32" y="301" width="445" height="208" fill="#e7f4ef" class="box"/>
+<text x="55" y="339" class="head">③ 快存 / 活动工作区</text>
+<text x="55" y="374" class="body">容量门槛 M = 32 KiB</text>
+<text x="55" y="408" class="body">状态 q、RK stage、残差 R</text>
+<text x="55" y="439" class="body">面通量 F、速度、可选重构迹</text>
+<text x="55" y="480" class="small">工作区大小 ≠ 传输流量；快照不累积于此</text>
+<rect x="555" y="301" width="413" height="208" fill="#e9eff9" class="box"/>
+<text x="578" y="339" class="head">④ 计算单元</text>
+<text x="578" y="374" class="body">理想吞吐 P = 8 工作单位/tick</text>
+<text x="578" y="408" class="body">重构 → 通量 → 残差 → RK 更新</text>
+<text x="578" y="439" class="body">归约 / 检查；kernel 与 stage 屏障</text>
+<text x="578" y="480" class="small">累加工作 W；累计依赖深度 D</text>
+<path d="M486 402H546" class="line" marker-start="url(#arrow)"/>
+<text x="515" y="366" text-anchor="middle" class="small">读/写</text>
+<path d="M253 518V549" class="line"/>
+<path d="M760 518V549" class="line"/>
+<rect x="32" y="558" width="936" height="158" fill="#fff" class="box"/>
+<text x="55" y="595" class="head">⑤ 资源账本：容量决定 Q，运算图决定 W 和 D</text>
+<text x="55" y="632" class="body">工作区 ≤ M：Q = resident_bytes = 8N + 8NS（理想全驻留）</text>
+<text x="55" y="664" class="body">工作区 &gt; M：Q = logical_bytes（逐 kernel 读写 + 快照读写）</text>
+<text x="55" y="695" class="small">快存 ↔ 计算的访问计入 logical_bytes，但驻留政策下不逐次计为外部传输。</text>
+<path d="M500 725V760" class="line"/>
+<rect x="32" y="769" width="936" height="130" fill="#20394a" rx="14"/>
+<text x="500" y="809" text-anchor="middle" class="code" style="fill:#fff">virtual_ticks = max(W / P, D, Q / B)</text>
+<text x="500" y="846" text-anchor="middle" class="body" style="fill:#d7ede8">工作容量约束　　　　依赖路径约束　　　　传输容量约束</text>
+<text x="500" y="878" text-anchor="middle" class="small" style="fill:#d7ede8">整条轨迹的理想重叠评分：取最大值，不相加；不是秒，也不是实际调度结果。</text>
+</svg>

@@ -1,0 +1,115 @@
+{
+  "name": "PDE Solver Guide",
+  "codeRevision": "20b2e3c2372ee3b76b9450ba95cafdaefb6694ad",
+  "sourceSites": {
+    "hyperbench": "25464b44cb257ea865d3192426ffac3c3d0ec3a9",
+    "dsl": "5749ba52a8e1f5cc5adc0ac0e22b91c009318b82"
+  },
+  "tutorials": [
+    {
+      "id": "01-conservation-grid-flux",
+      "number": "01",
+      "title": "守恒、网格与通量",
+      "description": "从数组中的一个数开始，理解有限体积更新。",
+      "url": "tutorial/01-conservation-grid-flux.html",
+      "sha256": "b2ce0061c34db6cfa23ad8edb1bc4603366dae937fe5dc6edafb4624b3720931"
+    },
+    {
+      "id": "02-reconstruction-riemann",
+      "number": "02",
+      "title": "重构与界面状态",
+      "description": "重构与 Riemann solver 各自负责什么。",
+      "url": "tutorial/02-reconstruction-riemann.html",
+      "sha256": "38103597952b90b4fe077f9af1ac4fb95722da076430a0bdf9c59389400263f9"
+    },
+    {
+      "id": "03-linear-reconstruction-limiters",
+      "number": "03",
+      "title": "线性重构与限制器",
+      "description": "利用邻居估计斜率，并控制不必要的振荡。",
+      "url": "tutorial/03-linear-reconstruction-limiters.html",
+      "sha256": "073de25067848eb0de6f3dce322feb155fe13dae81021f420a65153f79755b28"
+    },
+    {
+      "id": "04-weno-candidates-weights",
+      "number": "04",
+      "title": "WENO：候选与权重",
+      "description": "拆开候选模板、平滑度与非线性权重。",
+      "url": "tutorial/04-weno-candidates-weights.html",
+      "sha256": "e47febfb5e424719452ebe04dcc38147231ac872b20581ccfb2212127232cbd2"
+    },
+    {
+      "id": "05-burgers-riemann-flux",
+      "number": "05",
+      "title": "Burgers 与 Godunov 通量",
+      "description": "从激波、稀疏波理解公共界面通量。",
+      "url": "tutorial/05-burgers-riemann-flux.html",
+      "sha256": "8b14dbae187949b9bb91e43ab1be39e28239fc1f6f0892728eee285570512d5c"
+    },
+    {
+      "id": "06-residual-time-integration",
+      "number": "06",
+      "title": "残差与时间推进",
+      "description": "通量差怎样进入 Euler 与 SSP-RK3。",
+      "url": "tutorial/06-residual-time-integration.html",
+      "sha256": "4f16974eec7ec4c303d4eb91c2d805d7485a77090daa35bc2a09731bdd69f23b"
+    },
+    {
+      "id": "07-boundaries-cfl",
+      "number": "07",
+      "title": "边界条件与 CFL",
+      "description": "补齐边界数据，并根据传播速度选择步长。",
+      "url": "tutorial/07-boundaries-cfl.html",
+      "sha256": "ce07230a08b5959fb677f353bd6cc11dab3c334f96ab1aeff5d7e81ec684b3cd"
+    },
+    {
+      "id": "08-one-step-five-levels",
+      "number": "08",
+      "title": "同一步计算的 L0–L4",
+      "description": "手算一个更新，再打开它的五层表示。",
+      "url": "tutorial/08-one-step-five-levels.html",
+      "sha256": "591d494bda6006efdedf9560ea382204699ed320d3908b930b9d3d7b93eca005"
+    },
+    {
+      "id": "09-component-contracts-and-replacement",
+      "number": "09",
+      "title": "组件替换与接口",
+      "description": "接得上的组件，还需要满足哪些数值约定。",
+      "url": "tutorial/09-component-contracts-and-replacement.html",
+      "sha256": "e9b741a3811a8603b81110c33fa11cbd7a6cf12f6878b83afb5fe8c7e0d3fee7"
+    },
+    {
+      "id": "10-learnable-choices-and-hard-solvers",
+      "number": "10",
+      "title": "可学习组件与软硬选择",
+      "description": "从候选权重走到最终执行的算法。",
+      "url": "tutorial/10-learnable-choices-and-hard-solvers.html",
+      "sha256": "ef349dc25f7d5a98837d875d2dc0ddca60f1946b52a738d986c0dabc74a1d157"
+    },
+    {
+      "id": "02a-reconstruction-families",
+      "number": "补充 A",
+      "title": "常见重构类型",
+      "description": "PC、MUSCL、PPM、ENO、WENO、TENO 与 MP5。",
+      "url": "tutorial/02a-reconstruction-families.html",
+      "sha256": "c93d8e7404c19accd2da5158a713f2946ff8c44618a6cd23961dd21f89622b36"
+    },
+    {
+      "id": "05a-flux-families",
+      "number": "补充 B",
+      "title": "常见数值通量",
+      "description": "比较 Rusanov、Roe、HLL、HLLE 与 HLLC。",
+      "url": "tutorial/05a-flux-families.html",
+      "sha256": "ee37aa38cb18b85cefc85d553b40d65152536ef1cd248ffb8fb68399d8df62e8"
+    },
+    {
+      "id": "07a-step-controller-retries",
+      "number": "补充 C",
+      "title": "控制器与重试",
+      "description": "选步、验收、回退和误差控制的职责边界。",
+      "url": "tutorial/07a-step-controller-retries.html",
+      "sha256": "929d0320dd981b345e86b3de45cb123b04fc7e3ca10d81a8f3474984100f583b"
+    }
+  ],
+  "chapters": 35
+}

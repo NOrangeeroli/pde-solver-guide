@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>同一步计算的 L0–L4 · PDE Solver</title><meta name="description" content="手算一个更新，再打开它的五层表示。"><meta name="theme-color" content="#20394a"><link rel="stylesheet" href="../assets/katex/katex.min.css"><link rel="stylesheet" href="../assets/texmath.css"><script src="../assets/mermaid.min.js" defer></script><script src="../assets/tutorial.js" defer></script><link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/portal.css"><script src="../assets/portal.js" data-root="../" defer></script></head><body class="learning-site"><a class="portal-skip" href="#content">跳到正文</a><header class="portal-bar"><a class="portal-brand" href="../index.html" aria-label="PDE Solver 首页"><span class="portal-mark">P</span><span>PDE SOLVER<small>LEARN · BENCHMARK · DESIGN</small></span></a><nav class="portal-nav" aria-label="网站栏目"><a href="../tutorial/index.html" aria-current="page">入门教程</a><a href="../hyperbench/index.html">HyperBench</a><a href="../dsl/index.html">组件 DSL</a></nav><button class="portal-search" type="button" aria-label="搜索三个栏目的文档"><span aria-hidden="true">⌕</span><span>搜索文档</span><kbd>/</kbd></button></header><main class="lesson-shell"><div class="lesson-breadcrumb"><a href="../index.html">首页</a><span>/</span><a href="index.html">入门教程</a><span>/</span><span>08</span><button class="toggle-lessons" aria-expanded="false" aria-controls="lesson-sidebar">展开课程目录</button></div><div class="lesson-layout"><aside class="lesson-sidebar" id="lesson-sidebar"><p class="kicker">LEARNING PATH</p><a class="course-home" href="index.html">课程总览</a><p class="nav-group">数值基础</p><nav aria-label="数值基础"><a href="01-conservation-grid-flux.html"><span>01</span>守恒、网格与通量</a><a href="02-reconstruction-riemann.html"><span>02</span>重构与界面状态</a><a href="03-linear-reconstruction-limiters.html"><span>03</span>线性重构与限制器</a><a href="04-weno-candidates-weights.html"><span>04</span>WENO：候选与权重</a><a href="05-burgers-riemann-flux.html"><span>05</span>Burgers 与 Godunov 通量</a></nav><p class="nav-group">时间与边界</p><nav aria-label="时间与边界"><a href="06-residual-time-integration.html"><span>06</span>残差与时间推进</a><a href="07-boundaries-cfl.html"><span>07</span>边界条件与 CFL</a></nav><p class="nav-group">理解组件体系</p><nav aria-label="理解组件体系"><a href="08-one-step-five-levels.html" aria-current="page"><span>08</span>同一步计算的 L0–L4</a><a href="09-component-contracts-and-replacement.html"><span>09</span>组件替换与接口</a><a href="10-learnable-choices-and-hard-solvers.html"><span>10</span>可学习组件与软硬选择</a></nav><p class="nav-group">配套阅读</p><nav aria-label="配套阅读"><a href="02a-reconstruction-families.html"><span>补充 A</span>常见重构类型</a><a href="05a-flux-families.html"><span>补充 B</span>常见数值通量</a><a href="07a-step-controller-retries.html"><span>补充 C</span>控制器与重试</a></nav><div class="reading-note">只需要导数与数组基础。<br>循着一个时间步，逐步理解。</div></aside><article class="lesson-article" id="content" tabindex="-1"><header class="lesson-heading"><p class="kicker">LESSON 08 / 从守恒到组件</p><h1>同一步计算的 L0–L4</h1><p>手算一个更新，再打开它的五层表示。</p></header><details class="on-this-page"><summary>本讲内容</summary><nav aria-label="本讲目录"><a href="#section-1">1. 先固定算法，再谈拆分</a><a href="#section-2">2. L0：保留完整单步的名字</a><a href="#section-3">3. L1：打开一步，看到数值模块</a><a href="#section-4">4. L2：打开模块，看到内部数值机制</a><a href="#section-5">5. L3：把数值机制写成离散与代数构件</a><a href="#section-6">6. L4：执行张量原语</a><a href="#section-7">7. 用实际代码验证五种表示</a><a href="#section-8">8. 控制器放在哪里？</a><a href="#section-9">9. 自测</a></nav></details><div class="lesson-body"><p>前面已经学过计算一步需要哪些职责。现在换一个问题：<strong>同一个算法，在代码里
+可以打开到多细？</strong> L0–L4 回答这个问题。它们是程序的不同表示粒度，求解时
+不需要依次运行五套算法。</p>
+<p>本讲对照已合入 main 的固定提交
+<a href="https://github.com/NOrangeeroli/meta-pde-solver/commit/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad"><code>20b2e3c23</code></a>。
+选择 <code>SolverSpec</code> 的基础有限体积入口；仓库还有其他完整轨迹与控制程序入口，
+不把它们的节点名混在这条展开链中。</p>
+<h2 id="section-1">1. 先固定算法，再谈拆分</h2>
+<p>本讲配置：一维 Burgers 方程、均匀网格、周期边界，分片常数（PC）重构、
+Godunov 通量、前向 Euler 时间推进。</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>u</mi><mi>t</mi></msub><mo>+</mo><msub><mrow><mo fence="true">(</mo><mfrac><msup><mi>u</mi><mn>2</mn></msup><mn>2</mn></mfrac><mo fence="true">)</mo></mrow><mi>x</mi></msub><mo>=</mo><mn>0</mn><mo separator="true">,</mo><mspace width="2em"/><msubsup><mi>U</mi><mi>i</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msubsup><mo>=</mo><msubsup><mi>U</mi><mi>i</mi><mi>n</mi></msubsup><mo>−</mo><mfrac><mrow><mi mathvariant="normal">Δ</mi><mi>t</mi></mrow><mrow><mi mathvariant="normal">Δ</mi><mi>x</mi></mrow></mfrac><mrow><mo fence="true">(</mo><msub><mover accent="true"><mi>F</mi><mo>^</mo></mover><mrow><mi>i</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow></msub><mo>−</mo><msub><mover accent="true"><mi>F</mi><mo>^</mo></mover><mrow><mi>i</mi><mo>−</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow></msub><mo fence="true">)</mo></mrow><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+u_t+\left(\frac{u^2}{2}\right)_x=0,
+\qquad
+U_i^{n+1}=U_i^n-\frac{\Delta t}{\Delta x}
+\left(\hat F_{i+1/2}-\hat F_{i-1/2}\right).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4908em;vertical-align:-0.9997em;"></span><span class="minner"><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4911em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:-0.6983em;"><span style="top:-1.7003em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9997em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.1311em;vertical-align:-0.267em;"></span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-2.433em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">+</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.267em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.9614em;vertical-align:-0.247em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7144em;"><span style="top:-2.453em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal">x</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size2">(</span></span><span class="mord"><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9468em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span><span style="top:-3.2523em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.5198em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1/2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3552em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9468em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span><span style="top:-3.2523em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.5198em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">−</span><span class="mord mtight">1/2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3552em;"><span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size2">)</span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">.</span></span></span></span></span></eqn></section><p>这里 <code>U</code> 是单元平均数组。取三个单元，仅作手算示例：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>U</mi><mo>=</mo><mo stretchy="false">[</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">]</mo><mo separator="true">,</mo><mspace width="2em"/><mi mathvariant="normal">Δ</mi><mi>x</mi><mo>=</mo><mn>1</mn><mo separator="true">,</mo><mspace width="2em"/><mi mathvariant="normal">Δ</mi><mi>t</mi><mo>=</mo><mn>0.1.</mn></mrow><annotation encoding="application/x-tex">
+U=[1,2,4],\qquad \Delta x=1,\qquad \Delta t=0.1.
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">0.1.</span></span></span></span></span></eqn></section><p>每个界面按“第 i 格的右界面”编号。PC 重构给出：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>右界面属于哪一格</th>
+<th style="text-align:right">左状态</th>
+<th style="text-align:right">右状态</th>
+<th style="text-align:right">Godunov 通量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 0 格</td>
+<td style="text-align:right">1</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">0.5</td>
+</tr>
+<tr>
+<td>第 1 格</td>
+<td style="text-align:right">2</td>
+<td style="text-align:right">4</td>
+<td style="text-align:right">2</td>
+</tr>
+<tr>
+<td>第 2 格</td>
+<td style="text-align:right">4</td>
+<td style="text-align:right">1（周期接回）</td>
+<td style="text-align:right">8</td>
+</tr>
+</tbody>
+</table></div><p>这些界面两侧均为正，Burgers 的 Godunov 通量在这里取左状态的物理通量。
+因此右界面通量数组为 <code>F=[0.5,2,8]</code>；各格左界面通量则为 <code>[8,0.5,2]</code>。</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>U</mi><mo>=</mo><mo>−</mo><mn>0.1</mn><mo stretchy="false">[</mo><mn>0.5</mn><mo>−</mo><mn>8</mn><mo separator="true">,</mo><mtext> </mtext><mn>2</mn><mo>−</mo><mn>0.5</mn><mo separator="true">,</mo><mtext> </mtext><mn>8</mn><mo>−</mo><mn>2</mn><mo stretchy="false">]</mo><mo>=</mo><mo stretchy="false">[</mo><mn>0.75</mn><mo separator="true">,</mo><mo>−</mo><mn>0.15</mn><mo separator="true">,</mo><mo>−</mo><mn>0.6</mn><mo stretchy="false">]</mo><mo separator="true">,</mo></mrow><annotation encoding="application/x-tex">
+\Delta U=-0.1[0.5-8,\ 2-0.5,\ 8-2]
+=[0.75,-0.15,-0.6],
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">Δ</span><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">−</span><span class="mord">0.1</span><span class="mopen">[</span><span class="mord">0.5</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">8</span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">0.5</span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">8</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">2</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0.75</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">−</span><span class="mord">0.15</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">−</span><span class="mord">0.6</span><span class="mclose">]</span><span class="mpunct">,</span></span></span></span></span></eqn></section><section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mi>U</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msup><mo>=</mo><mo stretchy="false">[</mo><mn>1.75</mn><mo separator="true">,</mo><mn>1.85</mn><mo separator="true">,</mo><mn>3.4</mn><mo stretchy="false">]</mo><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+U^{n+1}=[1.75,1.85,3.4].
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8641em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">+</span><span class="mord mtight">1</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">1.75</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1.85</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">3.4</span><span class="mclose">]</span><span class="mord">.</span></span></span></span></span></eqn></section><p>三个分量的和仍为 7。周期网格上的内部通量相互抵消，符合前面讲过的守恒。
+下面每一层都表示这一步计算，最终应得到同一结果。</p>
+<h2 id="section-2">2. L0：保留完整单步的名字</h2>
+<div class="lesson-code"><div class="code-toolbar"><span>python</span><button class="copy-code" type="button">复制</button></div><pre><code class="language-python">spec = SolverSpec(
+    equation=&quot;burgers&quot;,
+    reconstruction=&quot;pc&quot;,
+    flux=&quot;godunov&quot;,
+    integrator=&quot;euler&quot;,
+    boundary=&quot;periodic&quot;,
+)
+graph = build(spec)
+</code></pre></div><p><code>build</code> 构造根节点 <code>s.step</code>：输入端口是 <code>u</code> 和 <code>dt_dx</code>，参数记录这套算法。
+它首先是一份“要如何计算”的描述，并没有在构图时推进数组。</p>
+<p>L0 回答：<strong>给定状态与步长，这套完整单步算法是什么？</strong>
+在这条接口中，<code>dt_dx</code> 已由调用者给定；<code>s.step</code> 不负责自行选择 CFL 或重试。</p>
+<h2 id="section-3">3. L1：打开一步，看到数值模块</h2>
+<p><code>lower(graph, 1)</code> 将 <code>s.step</code> 展开成模块组成的数据流：</p>
+<figure class="flow-figure"><pre class="mermaid">flowchart LR
+    U[&quot;单元平均 U&quot;] --&gt; L[&quot;n.reconstruct：左状态&quot;]
+    U --&gt; R[&quot;n.reconstruct：右状态&quot;]
+    L --&gt; F[&quot;n.flux：界面通量&quot;]
+    R --&gt; F
+    F --&gt; D[&quot;n.divergence：本步增量 ΔU&quot;]
+    D --&gt; A[&quot;n.affine：U + ΔU&quot;]
+    U --&gt; A
+    A --&gt; V[&quot;下一状态&quot;]
+</pre><figcaption>计算与控制的数据流</figcaption></figure><div class="lesson-table"><table><thead>
+<tr>
+<th>模块</th>
+<th>本例输入 → 输出</th>
+<th>数值作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>n.reconstruct</code>，调用两次</td>
+<td>U → 左、右界面状态</td>
+<td>从单元平均构造界面两侧数据</td>
+</tr>
+<tr>
+<td><code>n.flux</code></td>
+<td>左、右状态 → F</td>
+<td>为相邻单元提供公共通量</td>
+</tr>
+<tr>
+<td><code>n.divergence</code></td>
+<td>F、dt_dx → ΔU</td>
+<td>右通量减左通量，再乘负的 dt/dx</td>
+</tr>
+<tr>
+<td><code>n.affine</code></td>
+<td>U、ΔU，权重 [1,1] → 下一状态</td>
+<td>将本步增量加入旧状态</td>
+</tr>
+</tbody>
+</table></div><p>注意本入口的 <code>n.divergence</code> <strong>已经包含 dt/dx</strong>，输出是增量，而非尚未乘 dt
+的变化率。不能再在外面多乘一次 dt。名字需要结合输入、输出和公式理解。</p>
+<p>L1 回答：<strong>完整一步由哪些有明确数值职责的模块组成？</strong></p>
+<h2 id="section-4">4. L2：打开模块，看到内部数值机制</h2>
+<p>本例的四类模块继续展开如下：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>L1 模块</th>
+<th>L2 节点</th>
+<th>本例具体做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>n.reconstruct</code></td>
+<td><code>m.trace</code></td>
+<td>PC 被表示为零斜率的界面取值；右状态还需读取下一格</td>
+</tr>
+<tr>
+<td><code>n.flux</code></td>
+<td><code>m.riemann</code></td>
+<td>使用 Burgers 的 Godunov 通量规则</td>
+</tr>
+<tr>
+<td><code>n.divergence</code></td>
+<td><code>m.divergence</code></td>
+<td>通量向左取邻居，求差并乘负的 dt/dx</td>
+</tr>
+<tr>
+<td><code>n.affine</code></td>
+<td><code>m.affine</code></td>
+<td>按给定权重组合输入数组</td>
+</tr>
+</tbody>
+</table></div><p>PC 重构中：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msubsup><mi>u</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow><mi>L</mi></msubsup><mo>=</mo><msub><mi>U</mi><mi>i</mi></msub><mo>+</mo><mstyle scriptlevel="0" displaystyle="false"><mfrac><mn>1</mn><mn>2</mn></mfrac></mstyle><mo>×</mo><mn>0</mn><mo>=</mo><msub><mi>U</mi><mi>i</mi></msub><mo separator="true">,</mo><mspace width="2em"/><msubsup><mi>u</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn></mrow><mi>R</mi></msubsup><mo>=</mo><msub><mi>U</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn></mrow></msub><mo>−</mo><mstyle scriptlevel="0" displaystyle="false"><mfrac><mn>1</mn><mn>2</mn></mfrac></mstyle><mo>×</mo><mn>0</mn><mo>=</mo><msub><mi>U</mi><mrow><mi>i</mi><mo>+</mo><mn>1</mn></mrow></msub><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+u^L_{i+1/2}=U_i+\tfrac12\times0=U_i,\qquad
+u^R_{i+1/2}=U_{i+1}-\tfrac12\times0=U_{i+1}.
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.3383em;vertical-align:-0.447em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.428em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1/2</span></span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.447em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.1901em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8451em;"><span style="top:-2.655em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.3383em;vertical-align:-0.447em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.428em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1/2</span></span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0077em;">R</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.447em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8917em;vertical-align:-0.2083em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.1901em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8451em;"><span style="top:-2.655em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8917em;vertical-align:-0.2083em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">U</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">+</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mord">.</span></span></span></span></span></eqn></section><p>Burgers 的 Godunov 通量在这个实现中使用等价的紧凑公式：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mover accent="true"><mi>F</mi><mo>^</mo></mover><mo stretchy="false">(</mo><msup><mi>u</mi><mi>L</mi></msup><mo separator="true">,</mo><msup><mi>u</mi><mi>R</mi></msup><mo stretchy="false">)</mo><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mi>max</mi><mo>⁡</mo><mrow><mo fence="true">(</mo><mi>max</mi><mo>⁡</mo><mo stretchy="false">(</mo><msup><mi>u</mi><mi>L</mi></msup><mo separator="true">,</mo><mn>0</mn><msup><mo stretchy="false">)</mo><mn>2</mn></msup><mo separator="true">,</mo><mtext> </mtext><mi>min</mi><mo>⁡</mo><mo stretchy="false">(</mo><msup><mi>u</mi><mi>R</mi></msup><mo separator="true">,</mo><mn>0</mn><msup><mo stretchy="false">)</mo><mn>2</mn></msup><mo fence="true">)</mo></mrow><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+\hat F(u^L,u^R)
+=\frac12\max\left(\max(u^L,0)^2,\ \min(u^R,0)^2\right).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.1968em;vertical-align:-0.25em;"></span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9468em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span><span style="top:-3.2523em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0077em;">R</span></span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0074em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">max</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size1">(</span></span><span class="mop">max</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">min</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0077em;">R</span></span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size1">)</span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">.</span></span></span></span></span></eqn></section><p>它涵盖第五讲的激波与稀疏波分类。公式只针对这里的 Burgers 标量方程，
+不能直接当成 Euler 方程组的 Godunov 通量。</p>
+<p>本例很简单，所以有些模块只展开成一个同名机制。若换成 WENO5，
+<code>n.reconstruct</code> 则会展开为多个 <code>m.candidate</code>、<code>m.smoothness</code>、<code>m.weight</code>
+和 <code>m.blend</code>。<strong>每一层不要求具有相同数量的节点。</strong></p>
+<p>L2 回答：<strong>模块内部采用什么具体数值机制？</strong></p>
+<h2 id="section-5">5. L3：把数值机制写成离散与代数构件</h2>
+<p>这一步已经能看到平方、最大值、邻居读取、线性组合等操作：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>L3 构件</th>
+<th>本例用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a.shift</code></td>
+<td>读取下一格的右状态，或上一格的界面通量</td>
+</tr>
+<tr>
+<td><code>a.square</code></td>
+<td>计算 Burgers 通量所需的平方</td>
+</tr>
+<tr>
+<td><code>a.max</code>、<code>a.min</code></td>
+<td>组成 Godunov 通量公式</td>
+</tr>
+<tr>
+<td><code>a.add</code>、<code>a.sub</code>、<code>a.mul</code></td>
+<td>界面取值、通量差、步长缩放</td>
+</tr>
+<tr>
+<td><code>a.linear</code></td>
+<td>表示 <code>U + ΔU</code> 的线性组合</td>
+</tr>
+</tbody>
+</table></div><p>本仓库的 <code>shift(x, offset=1)</code> 表示输出位置 i 读取输入的 <code>x[i+1]</code>。
+周期实现使用 <code>torch.roll(x, -1)</code>；不要把这里的 offset 与 <code>torch.roll</code>
+参数的符号直接等同。通量差中的 offset 是 <strong>-1</strong>，读取 <code>F[i-1]</code>。</p>
+<p>L3 回答：<strong>机制具体由哪些离散与代数操作构成？</strong></p>
+<h2 id="section-6">6. L4：执行张量原语</h2>
+<p>例如：</p>
+<div class="lesson-code"><div class="code-toolbar"><span>text</span><button class="copy-code" type="button">复制</button></div><pre><code class="language-text">a.square(x)          → p.mul(x, x)
+a.linear(x, y; 1, 1) → p.add(p.mul(1, x), p.mul(1, y))
+a.shift(x, -1)      → p.shift(x, -1)
+</code></pre></div><p>L3 的平方可以拆成 L4 的乘法；某些加减乘或邻居读取只需转换到对应原语。
+L4 是当前解释器选择的执行边界，不是 CPU 指令层：例如 <code>p.shift</code> 最终仍
+调用张量库操作。</p>
+<p>L4 回答：<strong>解释器最终执行哪些张量操作？</strong></p>
+<h2 id="section-7">7. 用实际代码验证五种表示</h2>
+<p>在含 <code>solver_sculpt/hierarchy</code> 的 main 检出根目录、安装了项目 Torch 依赖
+的环境中运行下面代码。早期教学工作树若尚未包含 hierarchy，需切换到该
+main 检出目录运行。</p>
+<div class="lesson-code"><div class="code-toolbar"><span>python</span><button class="copy-code" type="button">复制</button></div><pre><code class="language-python">import torch
+from solver_sculpt.hierarchy import SolverSpec, build, lower, evaluate, walk
+
+spec = SolverSpec(
+    equation=&quot;burgers&quot;, reconstruction=&quot;pc&quot;, flux=&quot;godunov&quot;,
+    integrator=&quot;euler&quot;, boundary=&quot;periodic&quot;,
+)
+graph = build(spec)
+u = torch.tensor([1., 2., 4.], dtype=torch.float64)
+expected = torch.tensor([1.75, 1.85, 3.4], dtype=torch.float64)
+
+for k in range(5):
+    representation = lower(graph, k)
+    ops = sorted({n.op for n in walk(representation)
+                  if n.op not in (&quot;input&quot;, &quot;constant&quot;)})
+    result = evaluate(representation, {&quot;u&quot;: u, &quot;dt_dx&quot;: 0.1})
+    torch.testing.assert_close(result, expected, rtol=0, atol=1e-14)
+    print(k, ops, result.tolist())
+</code></pre></div><p>本配置实际出现的节点类型为：</p>
+<div class="lesson-table"><table><thead>
+<tr>
+<th>层级</th>
+<th>节点类型（不含输入与常量）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0</td>
+<td><code>s.step</code></td>
+</tr>
+<tr>
+<td>L1</td>
+<td><code>n.affine</code>、<code>n.divergence</code>、<code>n.flux</code>、<code>n.reconstruct</code></td>
+</tr>
+<tr>
+<td>L2</td>
+<td><code>m.affine</code>、<code>m.divergence</code>、<code>m.riemann</code>、<code>m.trace</code></td>
+</tr>
+<tr>
+<td>L3</td>
+<td><code>a.add</code>、<code>a.linear</code>、<code>a.max</code>、<code>a.min</code>、<code>a.mul</code>、<code>a.shift</code>、<code>a.square</code>、<code>a.sub</code></td>
+</tr>
+<tr>
+<td>L4</td>
+<td><code>p.add</code>、<code>p.max</code>、<code>p.min</code>、<code>p.mul</code>、<code>p.shift</code>、<code>p.sub</code></td>
+</tr>
+</tbody>
+</table></div><p>这里列的是<strong>节点类型</strong>，同一种类型可能在图中出现多次。图中的连接表达
+数据依赖，也可以共享中间结果；它不是一份只含不同函数名的清单。</p>
+<p><code>lower</code> 负责展开表示；<code>evaluate</code> 会先将收到的表示继续展开到 L4，再执行。
+因此这段代码不是五个彼此独立的求解器对照。除了层级结果一致，我们还用
+第 1 节独立手算的结果检查它，避免只验证“展开前后自己等于自己”。</p>
+<p>源码定位：<a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/hierarchy/solvers.py">完整单步与配置</a>、
+<a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/hierarchy/modules.py">L1 模块</a>、
+<a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/hierarchy/mechanisms.py">L2 机制</a>、
+<a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/hierarchy/algebra.py">L3 构件</a>、
+<a href="https://github.com/NOrangeeroli/meta-pde-solver/blob/20b2e3c2372ee3b76b9450ba95cafdaefb6694ad/solver_sculpt/hierarchy/ir.py">展开与 L4 执行</a>。</p>
+<h2 id="section-8">8. 控制器放在哪里？</h2>
+<p>本讲描述的是<strong>给定 dt 的完整单步</strong>。外层控制器可以先选择 dt，再调用这一步，
+验收后提交，失败则换一个 dt 重试。改成 SSP-RK3 后，一次尝试还包含三个
+阶段，各阶段需要重新计算空间模块。</p>
+<p>控制流程本身也有自己的 L0–L4，例如 <code>control.adaptive_schedule</code> 将整段轨迹
+展开为区间、循环、赋值与重试操作。所以“单步外层”是执行关系，“L0”是
+表示粒度：两者不要混为同一个维度。</p>
+<h2 id="section-9">9. 自测</h2>
+<ol>
+<li>将 Euler 换成 SSP-RK3，是否只是把 L4 的加法换一个名字？</li>
+<li>本例的 <code>n.divergence</code> 输出后，为什么不能再乘一次 dt？</li>
+<li>将 PC 换成 WENO5，在哪一层最容易观察候选模板和平滑度权重？</li>
+<li>五层结果相同，是否足以证明任何新通量都是正确的？</li>
+</ol>
+<p>参考答案：1）不是；要改变阶段组合与依赖，并在阶段状态上重算空间模块。
+2）该入口已经把 dt/dx 乘进通量差。3）L2；L1 保留“重构模块”的整体职责。
+4）不够；层级一致性检查展开是否保留计算，还要用独立公式、守恒或其他
+适用性质验证算法本身。</p>
+<p>下一讲讨论：固定这些接口后，哪些组件可以替换，以及替换时必须满足哪些条件。</p>
+</div><section class="step-lab" aria-labelledby="lab-title"><p class="kicker">TRY THE NUMBERS / 教学演示</p><h2 id="lab-title">亲手改变一个通量选择</h2><p>固定 U = [1, 2, 4]、周期边界、PC 重构与 Euler；调节 Godunov / Rusanov 权重，观察同一步更新。</p><label for="mix-weight">Godunov 权重 <output id="mix-value">0.75</output></label><input id="mix-weight" type="range" min="0" max="1" step="0.05" value="0.75"><div class="lab-results" aria-live="polite"></div><p class="lab-caption">单步教学计算；不表示稳定性或性能实验结论。硬选择在权重相等时取 Godunov。</p></section><nav class="chapter-nav" aria-label="前后章节"><a href="07-boundaries-cfl.html"><small>上一篇</small>← 边界条件与 CFL</a><a href="09-component-contracts-and-replacement.html"><small>下一篇</small>组件替换与接口 →</a></nav><p class="chapter-source">教学内容 · 主线 10 讲 / 补充 3 篇 · <a href="../sources/tutorial/08-one-step-five-levels.md" download>下载本讲 Markdown</a></p></article></div></main><footer class="portal-footer"><span>PDE SOLVER · 从概念到实现</span><a href="../index.html">网站首页</a><a href="https://github.com/NOrangeeroli/pde-solver-guide">文档仓库 ↗</a><span>公开文档 · 源码链接可能需要访问权限</span></footer></body></html>

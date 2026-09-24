@@ -1,0 +1,470 @@
+{
+  "code_commit": "bb45812aa463bf26094c700abf652ca379c762ae",
+  "scope": "Documentation snapshot; no solver execution",
+  "sources": [
+    {
+      "path": "docs/hyperbench-site/assets/cost-machine.svg",
+      "sha256": "06460506643159fc3f20cf17697110821e06a70618877c5d26c3902faa6e7190"
+    },
+    {
+      "path": "docs/hyperbench-site/content.js",
+      "sha256": "60eb658c6ffafbef6becbac3dbe7ad441a2c83aea969c4e2f2702d9ac8ceb546"
+    },
+    {
+      "path": "docs/hyperbench-site/style.css",
+      "sha256": "03e1d170cba79d449c2a287c2a9ca21b221a6038258422f40a581ba5035cfe55"
+    },
+    {
+      "path": "hyperbench/cases/catalog.py",
+      "sha256": "9d674ff85e4f0e75daf06f9444449c956e5d5baaed90cac3bebf04b2c3062d5a"
+    },
+    {
+      "path": "hyperbench/cases/v2_catalog.py",
+      "sha256": "f0f9d7caa54f6a5773acc2d5867eae50be7cbd8bbbb410a1fc02c8fe2c03d44d"
+    },
+    {
+      "path": "hyperbench/cases/burgers_stress.py",
+      "sha256": "eb5c48622538df74c5ba95f319ec2b2902161e5cf1eadb7285f6b173ed3087d3"
+    },
+    {
+      "path": "hyperbench/cases/complex_catalog.py",
+      "sha256": "2cd3d1ced3784294e4c252e0c4abbfa0505d25fbf2d41717b6511bd6d93cacbe"
+    },
+    {
+      "path": "hyperbench/cases/complex_additional.py",
+      "sha256": "50ada91f0d16e09849950f832a8c4eeca80fc56ce59073f2d483c8bfd011f8b8"
+    },
+    {
+      "path": "hyperbench/references/complex_similarity.py",
+      "sha256": "eeb31029cae3202f7cdf47bd9967a4bf4b13f56a6f57b4519de35a4d9d574415"
+    },
+    {
+      "path": "hyperbench/references/complex_detonation.py",
+      "sha256": "efd3305877ebb6b1481fc0829ef245aa008f125a95802f7e4562048006551bf5"
+    },
+    {
+      "path": "hyperbench/references/complex_dry_riemann.py",
+      "sha256": "dd8fa652cfd4169ed61c017e59516b234de5e41f96ae712bbcdf8ab1d63c0d7b"
+    },
+    {
+      "path": "hyperbench/cases/complex_suite.py",
+      "sha256": "0964812b72b9781089d48fe795351a5449147a04ca2c3b96181b053c62ec8973"
+    },
+    {
+      "path": "hyperbench/references/reference_tiers.py",
+      "sha256": "40009fe1f0b93e77893406aac6a0f30aaf638f72b89636cae2aeb9e9cafb6480"
+    },
+    {
+      "path": "hyperbench/reference_data/admission.json",
+      "sha256": "734c0b01ac5b3665f25ec1b3aa45bba777e81a673fd6e3bd7107d1e44a29c3af"
+    },
+    {
+      "path": "hyperbench/COMPLEX_EXTENSION.md",
+      "sha256": "9db60ec6426cf5a6a0c11885db91c7367ea0cafad25b1615a79a9d38f6f15b79"
+    },
+    {
+      "path": "hyperbench/COST_MODEL.md",
+      "sha256": "253a3d0256ea25f57b923bcabaa6f3ff1f63d3156357a5ffc34ea8e8fb45938a"
+    },
+    {
+      "path": "hyperbench/README.md",
+      "sha256": "95d560c4842307c2805baeab0a4675ef68b13c47e1b6c0384e0f0ab85d49e019"
+    },
+    {
+      "path": "experiments/hyperbolic/20260922_burgers_cost_lines_v031/burgers_all_cost.png",
+      "sha256": "41f6f93475b2b8857c7504eea838c66c2fe0b825701527e6fb439949904f89d9"
+    },
+    {
+      "path": "hyperbench/equations/__init__.py",
+      "sha256": "8133dd38c8396a17826a9a22d99698c1e9637a5dec3f21a4815e5268d188c0aa"
+    },
+    {
+      "path": "hyperbench/equations/_shared/__init__.py",
+      "sha256": "57bd4605824160de9932082655c691a6f8534bc41db0bb1ca71a8aca1f660ab0"
+    },
+    {
+      "path": "hyperbench/equations/_shared/alfven.py",
+      "sha256": "a918b317a686304c46eb4823b945e349efe8c46bfaed615c398f357a475c128c"
+    },
+    {
+      "path": "hyperbench/equations/_shared/compact_integrals.py",
+      "sha256": "57656ae16e610af0cc53bbbf81fd72db56ef0bb8c3ff9006131996d8291aa370"
+    },
+    {
+      "path": "hyperbench/equations/_shared/contacts.py",
+      "sha256": "fee41a4038b14e6e69d4a83243371c537203ed9bb0c3617540cfa8d34cb3efa9"
+    },
+    {
+      "path": "hyperbench/equations/_shared/fan_integrals.py",
+      "sha256": "ef5386fda22ba53b44354d89bb279447f443f5f2a73029f7b8744c908cffd1ba"
+    },
+    {
+      "path": "hyperbench/equations/_shared/gas_initial.py",
+      "sha256": "7a55635632c2734384d870ef4d79f590dad303dcd11f57598faed43708bf9628"
+    },
+    {
+      "path": "hyperbench/equations/_shared/interface_initial.py",
+      "sha256": "d2e4c6a7df60ff77dd432dacc7eaa40a69cb1aa5afee69ba541dad10aa7463d9"
+    },
+    {
+      "path": "hyperbench/equations/_shared/layers.py",
+      "sha256": "7a5a62764980c2d4185b3d84a140284eafeedc05eb1d6908af2cfe17d765c22d"
+    },
+    {
+      "path": "hyperbench/equations/_shared/linear_initial.py",
+      "sha256": "71a69c3305fc79aa6384ffb9bcb1921a7558566f757f4cdabee3d76e791c4708"
+    },
+    {
+      "path": "hyperbench/equations/_shared/magnetic_initial.py",
+      "sha256": "3a290512f0868eb774eae50b783cdad54720ccf6cf6921ada0ec82c2cbe3618f"
+    },
+    {
+      "path": "hyperbench/equations/_shared/modes.py",
+      "sha256": "63531d29993c807c9db899f682004bfdb4934a9789919246be0ab670b406bd0d"
+    },
+    {
+      "path": "hyperbench/equations/_shared/profiles.py",
+      "sha256": "117c506956fa3730d66768a3345a1d1ccdee13bb40c502211369f34ef5270f1d"
+    },
+    {
+      "path": "hyperbench/equations/_shared/riemann_integrals.py",
+      "sha256": "c144d6b45fbad750e37d064a9a5d7c83c46ad670c9c9662efef54f95ada99b33"
+    },
+    {
+      "path": "hyperbench/equations/_shared/scalar.py",
+      "sha256": "181c4775e6e9ef6c3b7e9419212290d49b98ed749d5b7da4607c872fd30ba7da"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/__init__.py",
+      "sha256": "ba897397917e427f8238563d5efc982a79dbbec88ebaee32b0b548ac2d8a7422"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/equation.py",
+      "sha256": "2bff0da6827604c01492c8f3bb48366ebd91e166707e0d73acc491dfa97768be"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/initial.py",
+      "sha256": "4ec3b67af08811eea277822cb4e7abef15ade779248473c797640dfa1b940dc8"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/oblique.py",
+      "sha256": "00177c9c7f36764c0eb083f0966a98eece3e40e315bebe6e4ab73ca9064e5a4a"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/references.py",
+      "sha256": "d182924c6e11af6f7d95312b3742cccc6231323bf02b0acea85ee4cfde7f9ec9"
+    },
+    {
+      "path": "hyperbench/equations/acoustics/scenarios.py",
+      "sha256": "54f9c3c6fd6359b9e614923e255cc4ac3fb74dce76978b88d4e168bf4cb56fe2"
+    },
+    {
+      "path": "hyperbench/equations/advection/__init__.py",
+      "sha256": "d377395acab923b4752eda93d0d056f9c40ff12c9172d2a7a982ca1b7ed49ff8"
+    },
+    {
+      "path": "hyperbench/equations/advection/equation.py",
+      "sha256": "588ed74f35050a609ff1a483e7b8e937bd3a0f9643ba1f277c5c0d5dab97e45f"
+    },
+    {
+      "path": "hyperbench/equations/advection/initial.py",
+      "sha256": "4881df0c9eae28aecaada38e99b01d1557abf2e63788ceadb374eade61a48c97"
+    },
+    {
+      "path": "hyperbench/equations/advection/references.py",
+      "sha256": "9621c7e8c753b6387472da35a1edd819ca37406536a261a50a098f52d94858ea"
+    },
+    {
+      "path": "hyperbench/equations/advection/scenarios.py",
+      "sha256": "007f4639a928b0d8f2ce8ba87c08304c8c9379dfe27ec73de641c469c306d7be"
+    },
+    {
+      "path": "hyperbench/equations/burgers/__init__.py",
+      "sha256": "1c4c41207fdf2cba899f50a754bc21dfa5d0ef971a4d6920f5935c9b67194ce6"
+    },
+    {
+      "path": "hyperbench/equations/burgers/equation.py",
+      "sha256": "0f34de363eeb249ae95506331679ce682fb3ef984f339250f72d94516e673fd2"
+    },
+    {
+      "path": "hyperbench/equations/burgers/hopf_lax.py",
+      "sha256": "af6232839ef3d2fe2d0d99c8d4bb45ee983401119d512323139a6738b053a279"
+    },
+    {
+      "path": "hyperbench/equations/burgers/initial.py",
+      "sha256": "5bc913ec12b57d32e05ae2f89d659b7059958426b6ccf54b03dd5606500a0178"
+    },
+    {
+      "path": "hyperbench/equations/burgers/literature.py",
+      "sha256": "7ff06d570c8638dea9ff8a99d6dee37127526ce6e1334aa349a11729e4d3e6c4"
+    },
+    {
+      "path": "hyperbench/equations/burgers/references.py",
+      "sha256": "6e26a5c37ee3231a9778bed973d1734a4c97efc936d2438c8b674bd33abe6757"
+    },
+    {
+      "path": "hyperbench/equations/burgers/scenarios.py",
+      "sha256": "8cdcc3b894351155ef53e82a4974de335876687e1420230e7f5d67113047b081"
+    },
+    {
+      "path": "hyperbench/equations/burgers/stress.py",
+      "sha256": "d4c1f10bd3d41c2e254d9f9d03a2ea9016f73650f55ecf4ee8c75b20ad801006"
+    },
+    {
+      "path": "hyperbench/equations/collections.py",
+      "sha256": "0608de0607875382ef044be70ad99e592d98e0021534db3f42a89868474072eb"
+    },
+    {
+      "path": "hyperbench/equations/elastic/__init__.py",
+      "sha256": "54aa60883ba0f864752413f6c09800ccf2fa327587f006f06ca41951421453b4"
+    },
+    {
+      "path": "hyperbench/equations/elastic/equation.py",
+      "sha256": "8b73cf9e38a5903926dfd9ad0a23d8e69c953c68a366ec882778fcae96661ca2"
+    },
+    {
+      "path": "hyperbench/equations/elastic/initial.py",
+      "sha256": "3b8763b2c0beb5a4d8e37fae6c26141586c97818d3475cb3eb63fc00ea4412df"
+    },
+    {
+      "path": "hyperbench/equations/elastic/references.py",
+      "sha256": "549e0d033953f22b0b89023cf0099f5f6d82217a06b4c86a88a19f80bfcdc6f6"
+    },
+    {
+      "path": "hyperbench/equations/elastic/scenarios.py",
+      "sha256": "9ee78643232ca402913df2c2d8a342121a6bce165ac072c19a36c63ca28699c5"
+    },
+    {
+      "path": "hyperbench/equations/euler/__init__.py",
+      "sha256": "1506044a34df5314039023fd028e80ff5dbfd44aafca9dc84005ea110ab73495"
+    },
+    {
+      "path": "hyperbench/equations/euler/equation.py",
+      "sha256": "0ee80c9c307d23d7f323e84474155e5ecb75d2446fb28558986df1bc9c73223d"
+    },
+    {
+      "path": "hyperbench/equations/euler/initial.py",
+      "sha256": "b1f97b54c0f51570e0c946f79f4c9f28df2838632109016bb92c7e890ef548c8"
+    },
+    {
+      "path": "hyperbench/equations/euler/references.py",
+      "sha256": "887c6513a837044d8fbb5807947cff5f7cb09558d467197a8e935654710733cd"
+    },
+    {
+      "path": "hyperbench/equations/euler/riemann.py",
+      "sha256": "99f24460abdfa6f4bcdc687f38707f475e7aec11ea8c32ec8ec0f02f3f823671"
+    },
+    {
+      "path": "hyperbench/equations/euler/scenarios.py",
+      "sha256": "52a68026d84eb0de93c3920058ef8fcaeab888b2cacaed2d96f52d0d1477a228"
+    },
+    {
+      "path": "hyperbench/equations/euler/similarity.py",
+      "sha256": "f4017c767f411ee684e44d178c94a87f8632287d2b78b4b91b2b688cbd43f547"
+    },
+    {
+      "path": "hyperbench/equations/euler/vacuum.py",
+      "sha256": "b6d06c14fa409f39a2a9e0816d875bfb4d5b7572a39c5bcf8e454503377a2472"
+    },
+    {
+      "path": "hyperbench/equations/euler/vortex.py",
+      "sha256": "5fd0cc91b20dd37d650cb9bc8513281ef2016ca556607b90a0316a4e2b41de0f"
+    },
+    {
+      "path": "hyperbench/equations/isothermal_mhd/__init__.py",
+      "sha256": "84f1079b9d004230b0b69c97018c8053020f88e83e772a1f115a994e1fe45c4f"
+    },
+    {
+      "path": "hyperbench/equations/isothermal_mhd/equation.py",
+      "sha256": "5bb0be05e74cf7a131eab1f4fa7a7d5e4256964980f3a0f8727b601339ce197d"
+    },
+    {
+      "path": "hyperbench/equations/isothermal_mhd/initial.py",
+      "sha256": "5b3503c8939c6c94e19915c866f43300f5f38d6570b6a960735ff6dce8db7316"
+    },
+    {
+      "path": "hyperbench/equations/isothermal_mhd/references.py",
+      "sha256": "47eb8416f19893c53c06e3018fb30c4957d6cefea3cb60975db6888ea2d82d48"
+    },
+    {
+      "path": "hyperbench/equations/isothermal_mhd/scenarios.py",
+      "sha256": "fdee2b5bb633617bded0397a302bcbe52a851d38516489f521c8f9a02652517e"
+    },
+    {
+      "path": "hyperbench/equations/kpp/__init__.py",
+      "sha256": "7e6ff26db09ba04ab6a90b6b637ba8f0a429c5d210b05ea301dd3b9f75193c0f"
+    },
+    {
+      "path": "hyperbench/equations/kpp/equation.py",
+      "sha256": "3d07fdd76d59f3e63471410b7c5ff8cce902d749df04be7b3cd4c9a7126b2e7b"
+    },
+    {
+      "path": "hyperbench/equations/kpp/initial.py",
+      "sha256": "e41daf0ae52867a8d33a58c80ee059859d94a68f5a4ed6c78f5f2dd7fc666f18"
+    },
+    {
+      "path": "hyperbench/equations/kpp/oblique.py",
+      "sha256": "2b8b5d50c50636c09f671eea595489ecd91b2b7c5e587adaca791f4652b5f4f1"
+    },
+    {
+      "path": "hyperbench/equations/kpp/planar.py",
+      "sha256": "ba3855b44f6919ea0459feffb1a934afde7dcede606142a559eb1937c2402205"
+    },
+    {
+      "path": "hyperbench/equations/kpp/references.py",
+      "sha256": "7ebc47f7e0f826324f23e3d934762a3d7671be02109fa5e5423f85e50d34f009"
+    },
+    {
+      "path": "hyperbench/equations/kpp/scenarios.py",
+      "sha256": "6e8b93a9a9fcb0e0d10abea29874fe037617ec7f53ee2e57ec45b0bee5a0ca7f"
+    },
+    {
+      "path": "hyperbench/equations/maxwell/__init__.py",
+      "sha256": "bd5e6b2e7a6f2ce8ae24aea3a998545911f66c179cc9ee55a121ee855165ab49"
+    },
+    {
+      "path": "hyperbench/equations/maxwell/equation.py",
+      "sha256": "e138b213e743b1d363608a0fb000a5c04e3eb1b86f409003597c3acdd33c9165"
+    },
+    {
+      "path": "hyperbench/equations/maxwell/initial.py",
+      "sha256": "23e6b519e5a0d407c832e3ece01b9b95a1ba24ba927d0b5ce3dabcc403af4293"
+    },
+    {
+      "path": "hyperbench/equations/maxwell/references.py",
+      "sha256": "9288c93c3e31b636934c28a6c5b77d3a29236895997048a48872745452a016ce"
+    },
+    {
+      "path": "hyperbench/equations/maxwell/scenarios.py",
+      "sha256": "3dd8d22f63bafc0b7e0e3464383dbb789f9850cec5add50358b5fae5f1584841"
+    },
+    {
+      "path": "hyperbench/equations/mhd/__init__.py",
+      "sha256": "9137e9e840421dd3a377c78d4501914614434561f9c36e87e67a09350d8f5d5f"
+    },
+    {
+      "path": "hyperbench/equations/mhd/equation.py",
+      "sha256": "2f80c3a7a8e7e612060c3a698ab8d11555793cba1247eebf63de6245a04a6849"
+    },
+    {
+      "path": "hyperbench/equations/mhd/initial.py",
+      "sha256": "1fbd338207c8513ec0f7d711e1b2f5954c0e014785869d76d2bed06401521528"
+    },
+    {
+      "path": "hyperbench/equations/mhd/references.py",
+      "sha256": "761bcf7807fe5ba13e0ec8f9f2ffad4823a1f2c9fc67572980677e2e80b06681"
+    },
+    {
+      "path": "hyperbench/equations/mhd/scenarios.py",
+      "sha256": "03f9452d7587029679cc6c3af47c932153d0783529dba124da6c4ba8a9334a9b"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/__init__.py",
+      "sha256": "3edc99fa573188958e2006ea17caeadd9589f9b4e47f0e455ac07a66be1d272e"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/equation.py",
+      "sha256": "2094d98fccf23d82e40e13bb28e1ac15f53169df001f51b0d29dce70f8745656"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/initial.py",
+      "sha256": "9fca3e7d80e1de916176e4fad55d39ea7738f6ab0e4ee7ccb9338882f2d5ff76"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/references.py",
+      "sha256": "0a88ab0aed421126a211d217de9bd16a1ece04153fa4c0ec57fc85ea38c7864e"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/riemann.py",
+      "sha256": "16588e362c464bae40f60c24bb65a0d8f3781cdfead17eef0b8bca65d8a13eb7"
+    },
+    {
+      "path": "hyperbench/equations/nonlinear_elastic/scenarios.py",
+      "sha256": "b15ac20e65160ed5f270b116507f221f0e8a069db14d572ab7c3269c13c51f31"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/__init__.py",
+      "sha256": "06c26354ec52d17ea0fa4221b1f7f65c1ac313a6f9fec50ca604fd69f77e06bd"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/detonation.py",
+      "sha256": "28a939a7f50264f48566b1ad5ca2039178fe8ef88e4edea869bd116faa61cb53"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/equation.py",
+      "sha256": "1e68023ef63740ef386cb728f31c9a8cdb34189bcef09fb5e66d13583f89acf9"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/initial.py",
+      "sha256": "b8cdac0d463b13d5b0e055870641d2e18ab41d035b082437b71df64693b39bc0"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/references.py",
+      "sha256": "7be1908a2525cfbb6576a768424dacf5e0129838673e42553ecf09c93754ec82"
+    },
+    {
+      "path": "hyperbench/equations/reactive_euler/scenarios.py",
+      "sha256": "49bf5762e71a9493654511b105bd3ed1b8cbad687b4143694951540d9c6b2975"
+    },
+    {
+      "path": "hyperbench/equations/relaxation/__init__.py",
+      "sha256": "208685623dcc02f1060613019f1fcc92c3af866c2142c51e0d55199b092ef621"
+    },
+    {
+      "path": "hyperbench/equations/relaxation/equation.py",
+      "sha256": "4c2c0907d899497d07e4f40042d784dc7437fccc324ebc11537c96e2c323fdef"
+    },
+    {
+      "path": "hyperbench/equations/relaxation/initial.py",
+      "sha256": "9447d04e35ebc07aaabf9b52880b5b2e20d76b7f592999b4c65a01f497d9dd20"
+    },
+    {
+      "path": "hyperbench/equations/relaxation/references.py",
+      "sha256": "42a1dcaed013adda8a8c1694a26b8d2b6a0483be45638b99e2558376fd450f69"
+    },
+    {
+      "path": "hyperbench/equations/relaxation/scenarios.py",
+      "sha256": "dada7a6fbf39e65f9395d81b9bfad91a411ff7eb5969398cd8466236d337deab"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/__init__.py",
+      "sha256": "f1da8a63637302ef3baeee7e42728a6fe159016aa976474a392dd5a3462c271d"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/equation.py",
+      "sha256": "2b242a822c8307c31b8af9bd9e224caf8c4b1150028cfebb573aeff376245624"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/initial.py",
+      "sha256": "5844653f486802afd87792b42cde43c8ee5f624741c59bdf713aee81255823a7"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/references.py",
+      "sha256": "e6835c77d4a033ef7d9741b3c56c15ad564ea3f1ba3fac5bfa49dd57fe167a0f"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/riemann.py",
+      "sha256": "f3306f3ec35c03e92c59bef09e44ae1b38e6151aa17de0166707c325bd43a846"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/scenarios.py",
+      "sha256": "4ad2afd03c576f66eacea8804c3061eabe6e014ac09502c6eccd2d2895254c81"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/steady.py",
+      "sha256": "86ba2b8e92620bbc8f2c1029679ba81a4169656ae7479c9a55fdcd2c20ebe834"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/thacker.py",
+      "sha256": "b38f1eb3b03e9f159eba2ab5bcc814d75017e8eb5e59d4814c978f79fecdada9"
+    },
+    {
+      "path": "hyperbench/equations/shallow_water/wet.py",
+      "sha256": "bd61915e6e22f35fb9005c2e493ea978f826304401f9ffa91942e091741de1f0"
+    },
+    {
+      "path": "hyperbench/equations/README.md",
+      "sha256": "73d6def5b438f9f1739135d8b4c1482a5f23bc72f9a07a187d36dc31ef045b34"
+    }
+  ]
+}
