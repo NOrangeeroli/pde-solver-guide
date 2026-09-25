@@ -3,7 +3,7 @@
   "codeRevision": "20b2e3c2372ee3b76b9450ba95cafdaefb6694ad",
   "sourceSites": {
     "hyperbench": "25464b44cb257ea865d3192426ffac3c3d0ec3a9",
-    "dsl": "e6b82dee9c695c13b7ca3e663f17f2b349167fcd"
+    "dsl": "5749ba52a8e1f5cc5adc0ac0e22b91c009318b82"
   },
   "tutorials": [
     {
@@ -103,13 +103,29 @@
       "sha256": "ee37aa38cb18b85cefc85d553b40d65152536ef1cd248ffb8fb68399d8df62e8"
     },
     {
-      "id": "07a-step-controller-retries",
+      "id": "06a-four-fv-algorithms",
       "number": "补充 C",
+      "title": "四种 FV 算法与改进模块",
+      "description": "Hancock、PPM、Central-upwind、THINC/BVD 分别改变哪个组件。",
+      "url": "tutorial/06a-four-fv-algorithms.html",
+      "sha256": "dedbc4a7efdcff9c4c1811f350c3141c7acf4984972b6efff14b5f36c3586e30"
+    },
+    {
+      "id": "06b-wave-propagation",
+      "number": "补充 D",
+      "title": "波传播法与波限制器",
+      "description": "Classic 波、fluctuations、波限制器及与 FV / DSL 的接口。",
+      "url": "tutorial/06b-wave-propagation.html",
+      "sha256": "c05879a2a97e19ecaca3897f478f676371425c6df5d2b80d4439a361e5895257"
+    },
+    {
+      "id": "07a-step-controller-retries",
+      "number": "补充 E",
       "title": "控制器与重试",
       "description": "选步、验收、回退和误差控制的职责边界。",
       "url": "tutorial/07a-step-controller-retries.html",
       "sha256": "929d0320dd981b345e86b3de45cb123b04fc7e3ca10d81a8f3474984100f583b"
     }
   ],
-  "chapters": 36
+  "chapters": 37
 }
